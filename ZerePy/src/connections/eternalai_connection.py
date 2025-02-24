@@ -55,15 +55,6 @@ class EternalAIConnection(BaseConnection):
     def register_actions(self) -> None:
         """Register available EternalAI actions"""
         self.actions = {
-            "generate-text": Action(
-                name="generate-text",
-                parameters=[
-                    ActionParameter("prompt", True, str, "The input prompt for text generation"),
-                    ActionParameter("system_prompt", True, str, "System prompt to guide the model"),
-                    ActionParameter("model", False, str, "Model to use for generation")
-                ],
-                description="Generate text using EternalAI models"
-            ),
             "check-model": Action(
                 name="check-model",
                 parameters=[
@@ -79,10 +70,9 @@ class EternalAIConnection(BaseConnection):
             "suggest-daily-habits": Action(
                 name="suggest-daily-habits",
                 parameters=[
-                    ActionParameter("health_metrics", True, str, "Current health metrics in JSON format"),
-                    ActionParameter("adherence_rate", True, float, "Current adherence rate to habits (0-100)")
+                    ActionParameter("health_metrics", True, str, "Health metrics in JSON format")
                 ],
-                description="Analyze current health metrics and suggest personalized daily habits"
+                description="Analyze health metrics and suggest personalized daily habits"
             )
         }
 
@@ -184,6 +174,11 @@ class EternalAIConnection(BaseConnection):
                 chain_id = "45762"
             logger.info(f"chain_id {chain_id}")
 
+            # Log dos parâmetros recebidos
+            logger.info(f"Received prompt: {prompt}")
+            logger.info(f"Initial system_prompt: {system_prompt}")
+            logger.info(f"Kwargs: {kwargs}")
+
             agent_id = self.config["agent_id"] or None
             contract_address = self.config["contract_address"] or None
             rpc = self.config["rpc_url"] or None
@@ -205,6 +200,8 @@ class EternalAIConnection(BaseConnection):
 
             stream = self.config["stream"]
             logger.info(f"call completions api stream {stream}")
+            logger.info(f"Sending to API - Messages: {[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}]}")
+
             completion = client.chat.completions.create(
                 model=model,
                 messages=[
@@ -293,37 +290,84 @@ class EternalAIConnection(BaseConnection):
         method = getattr(self, method_name)
         return method(**kwargs)
 
-    def suggest_daily_habits(self, health_metrics: str, adherence_rate: float) -> str:
-        """Analyze health metrics and suggest personalized daily habits"""
+    def analyze_behavior(self, behavior: str, antecedent: str, consequence: str, previous_attempts: str) -> str:
+        """Analyze behavior and suggest personalized habits"""
         try:
-            # Primeira análise usando ANALYZE_BEHAVIOR_PROMPT
-            behavior_analysis = self.generate_text(
-                prompt=ANALYZE_BEHAVIOR_PROMPT.format(
-                    behavior=health_metrics,
-                    antecedent="Daily health routine and metrics",
-                    consequence="Impact on overall well-being",
-                    previous_attempts="Current health status assessment",
-                    daily_progress=adherence_rate,
-                    daily_reflection=f"Current adherence rate: {adherence_rate}%"
-                ),
-                system_prompt="",  # Obtido do contrato
-                model=self.config["model"]
+            # Prompt simples e direto
+            prompt = f"""Por favor, analise estes dados de saúde e sugira hábitos diários:
+- Nível de Stress: {behavior}
+- Qualidade do Sono: {antecedent}
+- Exercício Físico: {consequence}
+- Alimentação: {previous_attempts}
+
+Sugira 3-4 hábitos práticos e alcançáveis para melhorar estes aspectos."""
+
+            # Chamada mais simples possível do generate_text
+            result = self.generate_text(
+                prompt=prompt,
+                system_prompt="",
+                model=self.config.get("model"),
+                chain_id="45762"
             )
 
-            # Sugestões de hábitos usando SUGGEST_HABITS_PROMPT
-            habits_suggestions = self.generate_text(
-                prompt=SUGGEST_HABITS_PROMPT.format(
-                    behavior_pattern=behavior_analysis,
-                    identified_triggers=health_metrics,
-                    behavior_impact="Overall health and wellness status",
-                    progress_data=str(adherence_rate)
-                ),
-                system_prompt="",  # Obtido do contrato
-                model=self.config["model"]
-            )
-
-            return habits_suggestions
+            return result
 
         except Exception as e:
-            logger.error(f"Daily habits suggestion failed: {e}")
-            raise EternalAIAPIError(f"Daily habits suggestion failed: {e}")
+            logger.error(f"Error: {e}")
+            raise EternalAIAPIError(f"Failed to generate suggestions: {e}")
+
+    def suggest_daily_habits(self, health_metrics: str) -> str:
+        """Analyze health metrics and suggest personalized daily habits"""
+        try:
+            # Log dos dados recebidos
+            logger.info(f"Received health_metrics: {health_metrics}")
+
+            # Formata os dados de saúde para um formato mais estruturado
+            metrics = json.loads(health_metrics)
+            prompt = f"""Analise estes dados de saúde e sugira hábitos diários específicos:
+
+DADOS ATUAIS:
+1. Nível de Stress: {metrics.get('Nível de Stress')}
+2. Qualidade do Sono: {metrics.get('Qualidade do Sono')}
+3. Exercício Físico: {metrics.get('Exercício Físico')}
+4. Alimentação: {metrics.get('Alimentação')}
+
+Por favor, sugira 3-4 hábitos práticos e alcançáveis, incluindo:
+- Nome do hábito
+- Frequência recomendada
+- Como implementar
+- Benefícios esperados"""
+
+            # Log do prompt formatado
+            logger.info(f"Formatted prompt: {prompt}")
+
+            # Temporariamente salva e modifica a configuração de stream
+            original_stream = self.config.get("stream", True)
+            self.config["stream"] = False
+
+            try:
+                # Chamada do generate_text com system prompt específico
+                result = self.generate_text(
+                    prompt=prompt,
+                    system_prompt="Você é um especialista em saúde e bem-estar, focado em ajudar pessoas a desenvolverem hábitos saudáveis e sustentáveis. Suas sugestões são práticas, baseadas em evidências e adaptadas às necessidades individuais.",
+                    model=self.config.get("model"),
+                    chain_id=self.config.get("chain_id", "45762")
+                )
+
+                # Verifica e limpa a resposta
+                if result:
+                    result = result.strip()
+                    if result:  # Verifica novamente após o strip
+                        return result
+                    
+                logger.error("Empty response from API")
+                raise EternalAIAPIError("Empty response from API")
+
+            finally:
+                # Restaura a configuração original de stream
+                self.config["stream"] = original_stream
+
+        except Exception as e:
+            logger.error(f"Error in suggest_daily_habits: {str(e)}")
+            logger.error(f"Full exception: {repr(e)}")
+            raise EternalAIAPIError(f"Failed to generate suggestions: {str(e)}")
