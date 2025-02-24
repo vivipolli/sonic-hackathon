@@ -7,7 +7,7 @@ from openai import OpenAI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from web3 import Web3
 import requests
-from src.prompts import ANALYZE_BEHAVIOR_PROMPT, SUGGEST_HABITS_PROMPT
+from src.prompts import ANALYZE_AND_SUGGEST_PROMPT
 
 logger = logging.getLogger("connections.eternalai_connection")
 IPFS = "ipfs://"
@@ -290,81 +290,48 @@ class EternalAIConnection(BaseConnection):
         method = getattr(self, method_name)
         return method(**kwargs)
 
-    def analyze_behavior(self, behavior: str, antecedent: str, consequence: str, previous_attempts: str) -> str:
-        """Analyze behavior and suggest personalized habits"""
-        try:
-            # Prompt simples e direto
-            prompt = f"""Por favor, analise estes dados de saúde e sugira hábitos diários:
-- Nível de Stress: {behavior}
-- Qualidade do Sono: {antecedent}
-- Exercício Físico: {consequence}
-- Alimentação: {previous_attempts}
-
-Sugira 3-4 hábitos práticos e alcançáveis para melhorar estes aspectos."""
-
-            # Chamada mais simples possível do generate_text
-            result = self.generate_text(
-                prompt=prompt,
-                system_prompt="",
-                model=self.config.get("model"),
-                chain_id="45762"
-            )
-
-            return result
-
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            raise EternalAIAPIError(f"Failed to generate suggestions: {e}")
-
     def suggest_daily_habits(self, health_metrics: str) -> str:
         """Analyze health metrics and suggest personalized daily habits"""
         try:
-            # Log dos dados recebidos
+            # Log received data
             logger.info(f"Received health_metrics: {health_metrics}")
 
-            # Formata os dados de saúde para um formato mais estruturado
+            # Format health data
             metrics = json.loads(health_metrics)
-            prompt = f"""Analise estes dados de saúde e sugira hábitos diários específicos:
+            prompt = ANALYZE_AND_SUGGEST_PROMPT.format(
+                behavior=metrics.get('Current Behavior'),
+                antecedent=metrics.get('Trigger Situations'),
+                consequence=metrics.get('Consequences'),
+                previous_attempts=metrics.get('Previous Attempts')
+            )
 
-DADOS ATUAIS:
-1. Nível de Stress: {metrics.get('Nível de Stress')}
-2. Qualidade do Sono: {metrics.get('Qualidade do Sono')}
-3. Exercício Físico: {metrics.get('Exercício Físico')}
-4. Alimentação: {metrics.get('Alimentação')}
-
-Por favor, sugira 3-4 hábitos práticos e alcançáveis, incluindo:
-- Nome do hábito
-- Frequência recomendada
-- Como implementar
-- Benefícios esperados"""
-
-            # Log do prompt formatado
+            # Log formatted prompt
             logger.info(f"Formatted prompt: {prompt}")
 
-            # Temporariamente salva e modifica a configuração de stream
+            # Temporarily save and modify stream configuration
             original_stream = self.config.get("stream", True)
             self.config["stream"] = False
 
             try:
-                # Chamada do generate_text com system prompt específico
+                # Call generate_text with specific system prompt
                 result = self.generate_text(
                     prompt=prompt,
-                    system_prompt="Você é um especialista em saúde e bem-estar, focado em ajudar pessoas a desenvolverem hábitos saudáveis e sustentáveis. Suas sugestões são práticas, baseadas em evidências e adaptadas às necessidades individuais.",
+                    system_prompt="You are a health and wellness expert, focused on helping people develop healthy and sustainable habits. Your suggestions are practical, evidence-based, and tailored to individual needs.",
                     model=self.config.get("model"),
                     chain_id=self.config.get("chain_id", "45762")
                 )
 
-                # Verifica e limpa a resposta
+                # Verify and clean response
                 if result:
                     result = result.strip()
-                    if result:  # Verifica novamente após o strip
+                    if result:
                         return result
                     
                 logger.error("Empty response from API")
                 raise EternalAIAPIError("Empty response from API")
 
             finally:
-                # Restaura a configuração original de stream
+                # Restore original stream configuration
                 self.config["stream"] = original_stream
 
         except Exception as e:

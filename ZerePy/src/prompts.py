@@ -25,43 +25,37 @@ POST_ECHOCHAMBER_PROMPT = ("Context:\n- Room Topic: {room_topic}\n- Tags: {tags}
                            )
 
 # Mental Health Analysis prompts
-ANALYZE_BEHAVIOR_PROMPT = ("Context:\n"
-                         "- Behavior Description: \"{behavior}\"\n"
-                         "- Trigger Situations: \"{antecedent}\"\n"
-                         "- Consequences & Benefits: \"{consequence}\"\n"
-                         "- Previous Attempts: \"{previous_attempts}\"\n\n"
-                         "Task:\n"
-                         "1. Analyze the behavioral pattern considering:\n"
-                         "   - Frequency and intensity of the behavior\n"
-                         "   - Specific triggers and environmental factors\n"
-                         "   - Short-term and long-term consequences\n"
-                         "   - Impact on daily functioning and well-being\n"
-                         "2. Consider previous attempts and their outcomes\n"
-                         "3. Identify potential barriers to change\n\n"
-                         "Guidelines:\n"
-                         "- Be specific and evidence-based in your analysis\n"
-                         "- Focus on patterns and relationships between triggers and behaviors\n"
-                         "- Consider both challenges and strengths shown in previous attempts\n"
-                         "- Suggest personalized, actionable habits based on this analysis\n\n"
-                         "The analysis should provide clear, practical recommendations for habit formation.")
+ANALYZE_AND_SUGGEST_PROMPT = ("""Behavioral Analysis and Habit Suggestions
 
-SUGGEST_HABITS_PROMPT = ("Based on the behavioral analysis:\n"
-                        "- Pattern: {behavior_pattern}\n"
-                        "- Triggers: {identified_triggers}\n"
-                        "- Impact: {behavior_impact}\n"
-                        "- Current Progress: {progress_data}\n\n"
-                        "Create a personalized set of daily habits that:\n"
-                        "1. Address the root causes identified in the analysis\n"
-                        "2. Build on successful elements from previous attempts\n"
-                        "3. Consider the patient's current routine and capabilities\n"
-                        "4. Provide clear implementation steps\n\n"
-                        "For each suggested habit, include:\n"
-                        "1. Title and clear description\n"
-                        "2. Specific frequency and duration\n"
-                        "3. Expected benefits based on behavioral science\n"
-                        "4. Step-by-step implementation guide\n"
-                        "5. Progress tracking metrics\n"
-                        "6. Potential obstacles and solutions\n"
-                        "7. Scientific references or evidence base\n\n"
-                        "Format each habit as a structured object that can be tracked in the habits dashboard.\n"
-                        "Focus on creating sustainable, measurable changes that align with the patient's goals and capabilities.")
+BEHAVIORAL DATA:
+- Current Behavior: "{behavior}"
+- Trigger Situations: "{antecedent}"
+- Consequences: "{consequence}"
+- Previous Attempts: "{previous_attempts}"
+
+INSTRUCTIONS:
+1. First, analyze the behavioral pattern considering:
+   - Frequency and intensity of behavior
+   - Specific triggers and environmental factors
+   - Short and long-term consequences
+   - Impact on daily functioning
+   - Potential barriers to change
+   - Strengths from previous attempts
+
+2. Based on this analysis, suggest 3-4 practical habits. For each habit, provide:
+   - Habit Name: short and clear title
+   - Description: brief explanation of the habit
+   - Implementation: detailed step-by-step execution
+   - Scientific Basis: reference or evidence supporting this habit
+
+RESPONSE FORMAT:
+[Brief behavioral analysis in 2-3 paragraphs]
+
+SUGGESTED HABITS:
+
+1. [Habit Name]
+   Description: [short description]
+   How to Implement: [practical steps]
+   Scientific Basis: [reference or evidence]
+
+[Repeat format for each suggested habit]""")
