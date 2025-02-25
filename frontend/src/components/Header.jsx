@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useWeb3Auth } from "@web3auth/modal-react-hooks";
 
 export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const location = useLocation()
+    const { isConnected, logout } = useWeb3Auth();
 
     const isActive = (path) => location.pathname === path
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error("Error during logout:", error);
+        }
+    }
 
     return (
         <header className="bg-sky-100 shadow-md">
@@ -16,7 +26,7 @@ export function Header() {
                         <svg className="w-8 h-8 text-sky-600" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z M12 6V18 M6 12H18" />
                         </svg>
-                        <span className="text-xl font-semibold text-sky-800">HealthCare</span>
+                        <span className="text-xl font-semibold text-sky-800">BehavAI</span>
                     </Link>
 
                     {/* Menu de Navegação */}
@@ -33,18 +43,16 @@ export function Header() {
                         >
                             Habits Tracker
                         </Link>
-                        <a href="#" className="text-sky-800 hover:text-sky-600 transition-colors">Especialidades</a>
-                        <a href="#" className="text-sky-800 hover:text-sky-600 transition-colors">Contato</a>
-                    </div>
 
-                    {/* Botões de Ação */}
-                    <div className="flex items-center space-x-4">
-                        <button className="hidden md:block px-4 py-2 text-sky-600 hover:text-sky-700 transition-colors">
-                            Login
-                        </button>
-                        <button className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-sm">
-                            Agendar Consulta
-                        </button>
+                        {/* Botão de Logout (visível apenas quando logado) */}
+                        {isConnected && (
+                            <button
+                                onClick={handleLogout}
+                                className="px-4 py-2 text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-lg"
+                            >
+                                Logout
+                            </button>
+                        )}
                     </div>
 
                     {/* Menu Mobile (Hamburguer) */}
@@ -77,9 +85,16 @@ export function Header() {
                         </Link>
                         <a href="#" className="text-sky-800 hover:text-sky-600 transition-colors">Especialidades</a>
                         <a href="#" className="text-sky-800 hover:text-sky-600 transition-colors">Contato</a>
-                        <button className="w-full px-4 py-2 text-sky-600 hover:text-sky-700 transition-colors border border-sky-600 rounded-lg">
-                            Login
-                        </button>
+
+                        {/* Botão de Logout no menu mobile (visível apenas quando logado) */}
+                        {isConnected && (
+                            <button
+                                onClick={handleLogout}
+                                className="w-full px-4 py-2 text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-lg"
+                            >
+                                Logout
+                            </button>
+                        )}
                     </div>
                 </div>
             </nav>

@@ -1,13 +1,23 @@
-import { useState } from 'react'
-import { mockHabits } from '../mocks/habitsData'
+import { useState, useEffect } from 'react'
 import { Example as AnimatedCheck } from './AnimatedCheck'
+import { parseAnalysisToHabits } from '../utils/parseHabits'
 
 export function HabitsTracker() {
-    const [habits, setHabits] = useState(mockHabits)
+    const [habits, setHabits] = useState([])
     const [expandedHabit, setExpandedHabit] = useState(null)
     const [selectedDay, setSelectedDay] = useState(new Date().getDay())
     const [dailyReflections, setDailyReflections] = useState({})
     const [isReflectionExpanded, setIsReflectionExpanded] = useState(false)
+
+    useEffect(() => {
+        // Carrega os resultados da análise do localStorage
+        const analysisResults = localStorage.getItem('analysisResults')
+        console.log(analysisResults)
+        if (analysisResults) {
+            const parsedHabits = parseAnalysisToHabits(analysisResults)
+            setHabits(parsedHabits)
+        }
+    }, [])
 
     const daysOfWeek = [
         { name: 'Sun', index: 0 },
@@ -57,7 +67,7 @@ export function HabitsTracker() {
     return (
         <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg text-left">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-sky-800">Weekly Habits Tracker</h2>
+                <h2 className="text-2xl font-bold text-sky-800">Suggested Habits Tracker</h2>
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Daily Progress:</span>
                     <span className={`font-semibold ${calculateDailyProgress() === 100

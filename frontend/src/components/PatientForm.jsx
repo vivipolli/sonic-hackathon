@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { analyzeBehavior } from '../services/api'
 
 export function PatientForm() {
     const navigate = useNavigate()
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
     const [formData, setFormData] = useState({
         // Section 1: Behavior Analysis
         behavior: '',
@@ -27,19 +30,31 @@ export function PatientForm() {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setLoading(true)
+        setError(null)
 
         try {
-            // Aqui você faria a chamada para o backend
-            // const response = await api.post('/analyze-behavior', formData)
+            // Formata os dados para o formato esperado pela API
+            const analysisData = {
+                currentBehavior: formData.behavior,
+                triggerSituations: formData.antecedent,
+                consequences: formData.consequence,
+                previousAttempts: formData.previousAttempts
+            }
 
-            // Simulando uma chamada bem-sucedida ao backend
-            await new Promise(resolve => setTimeout(resolve, 1000))
+            const response = await analyzeBehavior(analysisData)
 
-            // Redireciona para a página de hábitos
-            navigate('/habits')
+            // Se a análise foi bem-sucedida, redireciona para a página de hábitos
+            if (response.status === "success") {
+                // Aqui você pode armazenar os hábitos sugeridos no estado global ou localStorage
+                localStorage.setItem('analysisResults', response.analysis)
+                navigate('/habits')
+            }
         } catch (error) {
             console.error('Error submitting form:', error)
-            // Aqui você pode adicionar tratamento de erro, como mostrar uma mensagem para o usuário
+            setError('Failed to analyze behavior. Please try again.')
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -116,11 +131,21 @@ export function PatientForm() {
                 </div>
             </div>
 
+            {error && (
+                <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
+                    {error}
+                </div>
+            )}
+
             <button
                 type="submit"
-                className="w-full bg-sky-600 text-white py-2 px-4 rounded-lg hover:bg-sky-700 transition-colors shadow-sm"
+                disabled={loading}
+                className={`w-full py-2 px-4 rounded-lg transition-colors shadow-sm
+                    ${loading
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-sky-600 hover:bg-sky-700 text-white'}`}
             >
-                Submit Analysis
+                {loading ? 'Analyzing...' : 'Submit Analysis'}
             </button>
         </form>
     )

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
@@ -97,6 +97,16 @@ class ZerePyServer:
     def __init__(self):
         self.app = FastAPI(title="ZerePy Server")
         self.state = ServerState()
+        
+        # Adicione o middleware CORS
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["http://localhost:5173"],  # URL do seu frontend Vite
+            allow_credentials=True,
+            allow_methods=["*"],  # Permite todos os métodos
+            allow_headers=["*"],  # Permite todos os headers
+        )
+        
         self.setup_routes()
 
     def setup_routes(self):
@@ -238,7 +248,7 @@ class ZerePyServer:
             """Analyze behavior and suggest habits"""
             if not self.state.agent_loaded or not self.state.cli.agent:
                 # Tenta recarregar o último agente se necessário
-                if not await self.state.load_agent("mental-health"):
+                if not await self.state.load_agent("mentalhealthai"):
                     raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
             
             try:
