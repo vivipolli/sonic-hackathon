@@ -193,6 +193,7 @@ class EternalAIConnection(BaseConnection):
             logger.info(f"call completions api stream {stream}")
             logger.info(f"Sending to API - Messages: {[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}]}")
 
+            self.config["stream"] = False  # Forçar sem stream
             completion = client.chat.completions.create(
                 model=model,
                 messages=[
@@ -201,6 +202,7 @@ class EternalAIConnection(BaseConnection):
                 ],
                 extra_body={"chain_id": chain_id},
                 stream=stream,
+                timeout=180.0  # Aumentar para 3 minutos
             )
             if not stream:
                 if completion.choices is None:

@@ -42,7 +42,7 @@ export function AnalysisResult() {
                 <div className="prose prose-sky max-w-none">
                     <div className="bg-sky-50 rounded-lg p-6 mb-8">
                         <p className="text-gray-700 whitespace-pre-wrap">
-                            {analysis.general_analysis}
+                            {analysis.generalAnalysis}
                         </p>
                     </div>
                 </div>

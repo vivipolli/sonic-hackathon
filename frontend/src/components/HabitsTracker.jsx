@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Example as AnimatedCheck } from './AnimatedCheck'
-import { getAnalyses } from '../services/api'
 
 export function HabitsTracker() {
     const navigate = useNavigate()
@@ -24,61 +23,51 @@ export function HabitsTracker() {
                 }
 
                 let analysisResults = localStorage.getItem('analysisResults')
-                let parsedContent = null
 
                 if (analysisResults) {
                     try {
-                        parsedContent = JSON.parse(analysisResults)
-                        // DEBUG: Vamos ver o que foi parseado
-                        console.log('Parsed content:', parsedContent)
-                        console.log('Has recommended_habits?', !!parsedContent?.recommended_habits)
+                        const parsedContent = JSON.parse(analysisResults)
+                        if (parsedContent?.habits) {
+                            // Extrai os hábitos do texto formatado
+                            const habitsList = parsedContent.habits
+                                .split(/\d+\.\s+\*\*/)
+                                .slice(1)
+                                .map((habitText, index) => {
+                                    // Extrai o título (texto entre os primeiros **)
+                                    const title = habitText.match(/^([^*]+)/)?.[1]?.trim() || ''
+
+                                    // Extrai description, implementation e scientific basis
+                                    const description = habitText.match(/Description:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
+                                    const implementation = habitText.match(/Implementation:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
+                                    const scientific = habitText.match(/Scientific Basis:\*\*\s*([^-\n]+)/)?.[1]?.trim() || ''
+
+                                    return {
+                                        id: index + 1,
+                                        title: title,
+                                        description: description,
+                                        details: implementation,
+                                        reference: {
+                                            title: scientific,
+                                            publisher: '' // Opcional, se quiser adicionar depois
+                                        },
+                                        daysCompleted: []
+                                    }
+                                })
+                                .filter(habit => habit.title) // Remove hábitos sem título
+
+                            console.log('Parsed habits:', habitsList) // Para debug
+                            setHabits(habitsList)
+                            setError(null)
+                            return
+                        }
                     } catch (err) {
                         console.error('Error parsing analysisResults:', err)
                     }
                 }
 
-                // Se não encontrou no analysisResults ou não tem recommended_habits
-                if (!parsedContent?.recommended_habits) {
-                    console.log('No recommended habits found in parsed content')
-                    const storedAnalyses = JSON.parse(
-                        localStorage.getItem(`analyses_${patientId}`) || '[]'
-                    )
-                    console.log('Stored analyses:', storedAnalyses)
+                setError('No habits recommendations found')
+                navigate('/form')
 
-                    if (storedAnalyses.length > 0) {
-                        const latestAnalysis = storedAnalyses[storedAnalyses.length - 1]
-                        parsedContent = latestAnalysis.content || latestAnalysis
-                        console.log('Using latest analysis:', parsedContent)
-                    }
-                }
-
-                if (!parsedContent?.recommended_habits) {
-                    console.log('Still no recommended habits found')
-                    setError('No habits recommendations found')
-                    navigate('/form')  // <-- Esta é provavelmente a linha que está causando o problema
-                    return
-                }
-
-                // Remove o último item se for as referências
-                const habits = parsedContent.recommended_habits.filter(habit =>
-                    !habit.name.startsWith('###')
-                )
-
-                const formattedHabits = habits.map((habit, index) => ({
-                    id: index + 1,
-                    title: habit.name || 'Unnamed Habit',
-                    description: habit.description || 'No description available',
-                    details: Array.isArray(habit.implementation)
-                        ? habit.implementation.join('\n')
-                        : 'No implementation steps available',
-                    reference: habit.scientific_basis
-                        ? { title: habit.scientific_basis }
-                        : null,
-                    daysCompleted: []
-                }))
-
-                setHabits(formattedHabits)
-                setError(null)
             } catch (err) {
                 console.error('Error fetching analysis:', err)
                 setError('Failed to load habits. Please try again later.')

@@ -38,6 +38,15 @@ class ServerState:
         self.agent_task = None
         self._stop_event = threading.Event()
 
+    async def load_agent(self, name: str) -> bool:
+        """Load an agent by name"""
+        try:
+            self.cli._load_agent_from_file(name)
+            return True
+        except Exception as e:
+            logger.error(f"Error loading agent {name}: {e}")
+            return False
+
     def _run_agent_loop(self):
         """Run agent loop in a separate thread"""
         try:
@@ -252,7 +261,7 @@ class ZerePyServer:
                         action="suggest-daily-habits",
                         params=[json.dumps(health_metrics)]
                     ),
-                    timeout=60.0
+                    timeout=100.0
                 )
                 
                 if not result:

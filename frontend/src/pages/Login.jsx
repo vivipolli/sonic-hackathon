@@ -1,7 +1,7 @@
 import { useWeb3Auth } from "@web3auth/modal-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import logo from '../assets/logo.png';
+// import logo from '../assets/logo.png';
 
 function Login() {
     const { connect, isConnected } = useWeb3Auth();
@@ -36,7 +36,7 @@ function Login() {
                 <div className="bg-white/10 p-8 rounded-xl shadow-lg backdrop-blur-md border border-white/30">
                     <div>
                         <div className="flex justify-center mb-4">
-                            <img src={logo} alt="HabiChain Logo" className="w-16 h-16" />
+                            {/* <img src={logo} alt="HabiChain Logo" className="w-16 h-16" /> */}
                         </div>
                         <h2 className="mt-2 text-center text-3xl text-sky-800">
                             Welcome to HabiChain

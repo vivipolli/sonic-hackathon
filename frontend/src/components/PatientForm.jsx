@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { analyzeBehavior, createViewingKey } from '../services/api'
+import { analyzeBehavior } from '../services/api'
 import { useWeb3Auth } from '@web3auth/modal-react-hooks'
 
 export function PatientForm() {
@@ -41,27 +41,26 @@ export function PatientForm() {
             localStorage.setItem('patientId', patientId)
 
             // Criar viewing key antes de enviar a análise
-            await createViewingKey(patientId)
 
             const analysisData = {
                 patient_id: patientId,
                 behavior: formData.behavior,
                 antecedent: formData.antecedent,
                 consequence: formData.consequence,
-                previous_attempts: formData.previousAttempts
+                previousAttempts: formData.previousAttempts
             }
 
             const response = await analyzeBehavior(analysisData)
 
-            if (response.analysis) {
+            if (response) {
                 // Salvar com a chave correta 'analysisResults'
-                localStorage.setItem('analysisResults', JSON.stringify(response.analysis))
+                localStorage.setItem('analysisResults', JSON.stringify(response))
 
                 // Também salvar no histórico de análises do paciente
                 const storedAnalyses = JSON.parse(
                     localStorage.getItem(`analyses_${patientId}`) || '[]'
                 )
-                storedAnalyses.push(response.analysis)
+                storedAnalyses.push(response)
                 localStorage.setItem(
                     `analyses_${patientId}`,
                     JSON.stringify(storedAnalyses)
