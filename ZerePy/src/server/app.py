@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -8,7 +9,6 @@ import signal
 import threading
 from pathlib import Path
 from src.cli import ZerePyCLI
-import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("server/app")
@@ -37,7 +37,6 @@ class ServerState:
         self.agent_running = False
         self.agent_task = None
         self._stop_event = threading.Event()
-        self.agent_loaded = False  # Novo flag para rastrear o estado do agente
 
     def _run_agent_loop(self):
         """Run agent loop in a separate thread"""
@@ -80,18 +79,6 @@ class ServerState:
             if self.agent_task:
                 self.agent_task.join(timeout=5)
             self.agent_running = False
-
-    async def load_agent(self, name: str):
-        """Load agent and maintain state"""
-        try:
-            self.cli._load_agent_from_file(name)
-            self.agent_loaded = True
-            logger.info(f"Agent {name} loaded successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to load agent: {e}")
-            self.agent_loaded = False
-            return False
 
 class ZerePyServer:
     def __init__(self):
@@ -137,14 +124,11 @@ class ZerePyServer:
         async def load_agent(name: str):
             """Load a specific agent"""
             try:
-                success = await self.state.load_agent(name)
-                if success:
-                    return {
-                        "status": "success",
-                        "agent": name
-                    }
-                else:
-                    raise HTTPException(status_code=400, detail="Failed to load agent")
+                self.state.cli._load_agent_from_file(name)
+                return {
+                    "status": "success",
+                    "agent": name
+                }
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
 
@@ -246,34 +230,46 @@ class ZerePyServer:
         @self.app.post("/analyze")
         async def analyze_behavior(request: BehaviorRequest):
             """Analyze behavior and suggest habits"""
-            if not self.state.agent_loaded or not self.state.cli.agent:
+            if not self.state.cli.agent:
                 # Tenta recarregar o último agente se necessário
                 if not await self.state.load_agent("mentalhealthai"):
                     raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
             
             try:
-                params = {
+                # Usar diretamente a ação suggest-daily-habits
+                health_metrics = {
                     "Current Behavior": request.current_behavior,
                     "Trigger Situations": request.trigger_situations,
                     "Consequences": request.consequences,
                     "Previous Attempts": request.previous_attempts
                 }
-
-                result = await asyncio.to_thread(
-                    self.state.cli.agent.perform_action,
-                    connection="eternalai",
-                    action="suggest-daily-habits",
-                    params=[json.dumps(params)]
+                
+                logger.info("Calling suggest-daily-habits action")
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.state.cli.agent.perform_action,
+                        connection="eternalai",
+                        action="suggest-daily-habits",
+                        params=[json.dumps(health_metrics)]
+                    ),
+                    timeout=60.0
                 )
+                
+                if not result:
+                    raise HTTPException(status_code=400, detail="Failed to generate analysis")
                 
                 return {
                     "status": "success",
                     "analysis": result,
                     "message": "Behavioral analysis completed successfully"
                 }
+                
+            except asyncio.TimeoutError:
+                logger.error("Request to EternalAI timed out")
+                raise HTTPException(status_code=504, detail="Request timed out")
             except Exception as e:
                 logger.error(f"Error in analyze_behavior: {e}")
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=500, detail=str(e))
 
 def create_app():
     server = ZerePyServer()

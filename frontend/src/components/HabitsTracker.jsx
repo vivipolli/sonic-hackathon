@@ -1,23 +1,94 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Example as AnimatedCheck } from './AnimatedCheck'
-import { parseAnalysisToHabits } from '../utils/parseHabits'
+import { getAnalyses } from '../services/api'
 
 export function HabitsTracker() {
+    const navigate = useNavigate()
     const [habits, setHabits] = useState([])
     const [expandedHabit, setExpandedHabit] = useState(null)
     const [selectedDay, setSelectedDay] = useState(new Date().getDay())
     const [dailyReflections, setDailyReflections] = useState({})
     const [isReflectionExpanded, setIsReflectionExpanded] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
     useEffect(() => {
-        // Carrega os resultados da análise do localStorage
-        const analysisResults = localStorage.getItem('analysisResults')
-        console.log(analysisResults)
-        if (analysisResults) {
-            const parsedHabits = parseAnalysisToHabits(analysisResults)
-            setHabits(parsedHabits)
+        async function fetchAnalysis() {
+            try {
+                const patientId = localStorage.getItem('patientId')
+
+                if (!patientId) {
+                    navigate('/form')
+                    return
+                }
+
+                let analysisResults = localStorage.getItem('analysisResults')
+                let parsedContent = null
+
+                if (analysisResults) {
+                    try {
+                        parsedContent = JSON.parse(analysisResults)
+                        // DEBUG: Vamos ver o que foi parseado
+                        console.log('Parsed content:', parsedContent)
+                        console.log('Has recommended_habits?', !!parsedContent?.recommended_habits)
+                    } catch (err) {
+                        console.error('Error parsing analysisResults:', err)
+                    }
+                }
+
+                // Se não encontrou no analysisResults ou não tem recommended_habits
+                if (!parsedContent?.recommended_habits) {
+                    console.log('No recommended habits found in parsed content')
+                    const storedAnalyses = JSON.parse(
+                        localStorage.getItem(`analyses_${patientId}`) || '[]'
+                    )
+                    console.log('Stored analyses:', storedAnalyses)
+
+                    if (storedAnalyses.length > 0) {
+                        const latestAnalysis = storedAnalyses[storedAnalyses.length - 1]
+                        parsedContent = latestAnalysis.content || latestAnalysis
+                        console.log('Using latest analysis:', parsedContent)
+                    }
+                }
+
+                if (!parsedContent?.recommended_habits) {
+                    console.log('Still no recommended habits found')
+                    setError('No habits recommendations found')
+                    navigate('/form')  // <-- Esta é provavelmente a linha que está causando o problema
+                    return
+                }
+
+                // Remove o último item se for as referências
+                const habits = parsedContent.recommended_habits.filter(habit =>
+                    !habit.name.startsWith('###')
+                )
+
+                const formattedHabits = habits.map((habit, index) => ({
+                    id: index + 1,
+                    title: habit.name || 'Unnamed Habit',
+                    description: habit.description || 'No description available',
+                    details: Array.isArray(habit.implementation)
+                        ? habit.implementation.join('\n')
+                        : 'No implementation steps available',
+                    reference: habit.scientific_basis
+                        ? { title: habit.scientific_basis }
+                        : null,
+                    daysCompleted: []
+                }))
+
+                setHabits(formattedHabits)
+                setError(null)
+            } catch (err) {
+                console.error('Error fetching analysis:', err)
+                setError('Failed to load habits. Please try again later.')
+            } finally {
+                setLoading(false)
+            }
         }
-    }, [])
+
+        fetchAnalysis()
+    }, [navigate])
 
     const daysOfWeek = [
         { name: 'Sun', index: 0 },
@@ -64,6 +135,32 @@ export function HabitsTracker() {
         return Math.round(percentage)
     }
 
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-6">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-sky-600 mb-4"></div>
+                <p className="text-sky-800 font-medium">Loading your habits tracker...</p>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg text-left">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                    <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Habits</h3>
+                    <p className="text-red-700">{error}</p>
+                    <button
+                        onClick={() => navigate('/form')}
+                        className="mt-4 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition-colors"
+                    >
+                        Return to Form
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg text-left">
             <div className="flex justify-between items-center mb-6">
@@ -82,21 +179,23 @@ export function HabitsTracker() {
             </div>
 
             <div className="flex justify-between items-center mb-8 border-b pb-4">
-                <div className="flex space-x-2">
-                    {daysOfWeek.map((day) => (
-                        <button
-                            key={day.index}
-                            onClick={() => setSelectedDay(day.index)}
-                            disabled={isCheckboxDisabled(day.index)}
-                            className={`
-                                px-4 py-2 rounded-lg transition-colors
-                                ${selectedDay === day.index ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}
-                                ${isCheckboxDisabled(day.index) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sky-500 hover:text-white'}
-                            `}
-                        >
-                            {day.name}
-                        </button>
-                    ))}
+                <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                    <div className="flex space-x-2 min-w-max">
+                        {daysOfWeek.map((day) => (
+                            <button
+                                key={day.index}
+                                onClick={() => setSelectedDay(day.index)}
+                                disabled={isCheckboxDisabled(day.index)}
+                                className={`
+                                    px-4 py-2 rounded-lg transition-colors
+                                    ${selectedDay === day.index ? 'bg-sky-600 text-white' : 'bg-gray-100 text-gray-700'}
+                                    ${isCheckboxDisabled(day.index) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sky-500 hover:text-white'}
+                                `}
+                            >
+                                {day.name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

@@ -7,7 +7,7 @@ from openai import OpenAI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from web3 import Web3
 import requests
-from src.prompts import ANALYZE_AND_SUGGEST_PROMPT
+from src.prompts import TEST_ANALYZE_PROMPT
 
 logger = logging.getLogger("connections.eternalai_connection")
 IPFS = "ipfs://"
@@ -188,15 +188,6 @@ class EternalAIConnection(BaseConnection):
                 # call on-chain system prompt
                 web3 = Web3(Web3.HTTPProvider(rpc))
                 logger.info(f"web3 connected to {rpc} {web3.is_connected()}")
-                contract = web3.eth.contract(address=contract_address, abi=AGENT_CONTRACT_ABI)
-                result = contract.functions.getAgentSystemPrompt(agent_id).call()
-                logger.info(f"on-chain system_prompt: {result}")
-                if len(result) > 0:
-                    try:
-                        system_prompt = self.get_on_chain_system_prompt_content(result[0].decode("utf-8"))
-                        logging.info(f"new system_prompt: {system_prompt}")
-                    except Exception as e:
-                        logger.error(f"get on-chain system_prompt fail {e}")
 
             stream = self.config["stream"]
             logger.info(f"call completions api stream {stream}")
@@ -298,7 +289,7 @@ class EternalAIConnection(BaseConnection):
 
             # Format health data
             metrics = json.loads(health_metrics)
-            prompt = ANALYZE_AND_SUGGEST_PROMPT.format(
+            prompt = TEST_ANALYZE_PROMPT.format(
                 behavior=metrics.get('Current Behavior'),
                 antecedent=metrics.get('Trigger Situations'),
                 consequence=metrics.get('Consequences'),

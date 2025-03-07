@@ -128,9 +128,10 @@ class SonicConnection(BaseConnection):
                 parameters=[
                     ActionParameter("to_address", True, str, "Recipient address"),
                     ActionParameter("amount", True, float, "Amount to transfer"),
-                    ActionParameter("token_address", False, str, "Optional token address")
+                    ActionParameter("token_address", False, str, "Optional token address"),
+                    ActionParameter("data", False, str, "Optional data to include in the transaction")
                 ],
-                description="Send $S or tokens"
+                description="Send $S or tokens with optional data"
             ),
             "swap": Action(
                 name="swap",
@@ -218,8 +219,8 @@ class SonicConnection(BaseConnection):
             logger.error(f"Failed to get balance: {e}")
             raise
 
-    def transfer(self, to_address: str, amount: float, token_address: Optional[str] = None) -> str:
-        """Transfer $S or tokens to an address"""
+    def transfer(self, to_address: str, amount: float, token_address: Optional[str] = None, data: Optional[str] = None) -> str:
+        """Transfer $S or tokens to an address with optional data"""
         try:
             private_key = os.getenv('SONIC_PRIVATE_KEY')
             account = self._web3.eth.account.from_key(private_key)
@@ -240,7 +241,8 @@ class SonicConnection(BaseConnection):
                     'from': account.address,
                     'nonce': self._web3.eth.get_transaction_count(account.address),
                     'gasPrice': self._web3.eth.gas_price,
-                    'chainId': chain_id
+                    'chainId': chain_id,
+                    'data': self._web3.to_hex(text=data) if data else None
                 })
             else:
                 tx = {
@@ -249,8 +251,13 @@ class SonicConnection(BaseConnection):
                     'value': self._web3.to_wei(amount, 'ether'),
                     'gas': 21000,
                     'gasPrice': self._web3.eth.gas_price,
-                    'chainId': chain_id
+                    'chainId': chain_id,
+                    'data': self._web3.to_hex(text=data) if data else None
                 }
+
+            # Ajustar o gás se houver dados adicionais
+            if data:
+                tx['gas'] = 100000  # Valor maior para acomodar os dados
 
             signed = account.sign_transaction(tx)
             tx_hash = self._web3.eth.send_raw_transaction(signed.rawTransaction)

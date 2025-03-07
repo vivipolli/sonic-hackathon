@@ -1,24 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { analyzeBehavior } from '../services/api'
+import { analyzeBehavior, createViewingKey } from '../services/api'
+import { useWeb3Auth } from '@web3auth/modal-react-hooks'
 
 export function PatientForm() {
     const navigate = useNavigate()
+    const { userEmail } = useWeb3Auth();
+
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [formData, setFormData] = useState({
-        // Section 1: Behavior Analysis
         behavior: '',
-        behaviorExample: '',
         antecedent: '',
-        antecedentExample: '',
         consequence: '',
-        benefits: '',
-
-        // Section 2: Coping Strategies
-        previousAttempts: '',
-        attemptsResults: ''
+        previousAttempts: ''
     })
+
+    const generatePatientId = () => {
+        const timestamp = Date.now()
+        const email = userEmail || 'anonymous'
+        const emailHash = btoa(email).replace(/[^a-zA-Z0-9]/g, '')
+        return `${emailHash}-${timestamp}`
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -34,24 +37,42 @@ export function PatientForm() {
         setError(null)
 
         try {
-            // Formata os dados para o formato esperado pela API
+            const patientId = generatePatientId()
+            localStorage.setItem('patientId', patientId)
+
+            // Criar viewing key antes de enviar a análise
+            await createViewingKey(patientId)
+
             const analysisData = {
-                currentBehavior: formData.behavior,
-                triggerSituations: formData.antecedent,
-                consequences: formData.consequence,
-                previousAttempts: formData.previousAttempts
+                patient_id: patientId,
+                behavior: formData.behavior,
+                antecedent: formData.antecedent,
+                consequence: formData.consequence,
+                previous_attempts: formData.previousAttempts
             }
 
             const response = await analyzeBehavior(analysisData)
 
-            // Se a análise foi bem-sucedida, redireciona para a página de hábitos
-            if (response.status === "success") {
-                // Aqui você pode armazenar os hábitos sugeridos no estado global ou localStorage
-                localStorage.setItem('analysisResults', response.analysis)
-                navigate('/habits')
+            if (response.analysis) {
+                // Salvar com a chave correta 'analysisResults'
+                localStorage.setItem('analysisResults', JSON.stringify(response.analysis))
+
+                // Também salvar no histórico de análises do paciente
+                const storedAnalyses = JSON.parse(
+                    localStorage.getItem(`analyses_${patientId}`) || '[]'
+                )
+                storedAnalyses.push(response.analysis)
+                localStorage.setItem(
+                    `analyses_${patientId}`,
+                    JSON.stringify(storedAnalyses)
+                )
+
+                navigate('/analysis')
+            } else {
+                throw new Error('No analysis results received')
             }
         } catch (error) {
-            console.error('Error submitting form:', error)
+            console.error('Error in form submission:', error)
             setError('Failed to analyze behavior. Please try again.')
         } finally {
             setLoading(false)
@@ -62,7 +83,6 @@ export function PatientForm() {
         <form onSubmit={handleSubmit} className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg text-left">
             <h2 className="text-2xl font-bold text-sky-800 mb-6">Behavioral Analysis Form</h2>
 
-            {/* Section 1: Behavior Analysis */}
             <div className="mb-8">
                 <h3 className="text-xl font-semibold text-sky-700 mb-4">Section 1: Behavior Analysis</h3>
 
@@ -112,7 +132,6 @@ export function PatientForm() {
                 </div>
             </div>
 
-            {/* Section 2: Coping Strategies */}
             <div className="mb-8">
                 <h3 className="text-xl font-semibold text-sky-700 mb-4">Section 2: Coping Strategies</h3>
 
@@ -140,12 +159,18 @@ export function PatientForm() {
             <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-2 px-4 rounded-lg transition-colors shadow-sm
+                className={`w-full py-2 px-4 rounded-lg transition-colors shadow-sm flex items-center justify-center space-x-2
                     ${loading
                         ? 'bg-gray-400 cursor-not-allowed'
                         : 'bg-sky-600 hover:bg-sky-700 text-white'}`}
             >
-                {loading ? 'Analyzing...' : 'Submit Analysis'}
+                {loading && (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                )}
+                <span>{loading ? 'Analyzing...' : 'Submit Analysis'}</span>
             </button>
         </form>
     )
