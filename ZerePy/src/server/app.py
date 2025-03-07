@@ -96,13 +96,12 @@ class ZerePyServer:
         self.app = FastAPI(title="ZerePy Server")
         self.state = ServerState()
         
-        # Adicione o middleware CORS
+        # Add CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://localhost:5173"],  # URL do seu frontend Vite
-            allow_credentials=True,
-            allow_methods=["*"],  # Permite todos os métodos
-            allow_headers=["*"],  # Permite todos os headers
+            allow_origins=["http://localhost:5173"], 
+            allow_methods=["*"],  
+            allow_headers=["*"],  
         )
         
         self.setup_routes()
@@ -246,7 +245,7 @@ class ZerePyServer:
                     raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
             
             try:
-                # Preparar os dados do usuário para armazenamento
+                # Prepare user data for storage
                 user_responses = {
                     "current_behavior": request.current_behavior,
                     "trigger_situations": request.trigger_situations,
@@ -254,7 +253,7 @@ class ZerePyServer:
                     "previous_attempts": request.previous_attempts
                 }
 
-                # Usar diretamente a ação suggest-daily-habits
+                # Use suggest-daily-habits action directly
                 health_metrics = {
                     "Current Behavior": request.current_behavior,
                     "Trigger Situations": request.trigger_situations,
@@ -276,16 +275,14 @@ class ZerePyServer:
                 if not result:
                     raise HTTPException(status_code=400, detail="Failed to generate analysis")
                 
-                # Armazenar resultado e respostas na blockchain
                 try:
                     storage_data = {
                         "user_id": request.user_id,
-                        "responses": user_responses,  # Adicionando as respostas do usuário
+                        "responses": user_responses,
                         "analysis": result,
                         "timestamp": datetime.now(timezone.utc).isoformat()
                     }
                     
-                    # Passar os parâmetros como uma lista
                     tx_hash = await asyncio.to_thread(
                         self.state.cli.agent.perform_action,
                         connection="sonic",
@@ -301,7 +298,7 @@ class ZerePyServer:
                         "analysis": result,
                         "message": "Behavioral analysis completed and stored successfully",
                         "blockchain_tx": tx_hash,
-                        "user_responses": user_responses  # Incluindo as respostas no retorno
+                        "user_responses": user_responses
                     }
                     
                 except Exception as e:
@@ -325,7 +322,6 @@ class ZerePyServer:
                 raise HTTPException(status_code=400, detail="No agent loaded")
             
             try:
-                # Preparar dados do hábito
                 habit_data = {
                     "user_id": user_id,
                     "habit_id": habit_id,
@@ -333,12 +329,11 @@ class ZerePyServer:
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 }
                 
-                # Corrigido: Passar os parâmetros como uma lista
                 tx_hash = await asyncio.to_thread(
                     self.state.cli.agent.perform_action,
                     connection="sonic",
                     action="store-data",
-                    params=[json.dumps(habit_data), "habit_completion"]  # Lista de parâmetros na ordem correta
+                    params=[json.dumps(habit_data), "habit_completion"]
                 )
 
                 if not tx_hash:
@@ -360,12 +355,11 @@ class ZerePyServer:
                 raise HTTPException(status_code=400, detail="No agent loaded")
             
             try:
-                # Corrigido: Passar os parâmetros como uma lista
                 stored_data = await asyncio.to_thread(
                     self.state.cli.agent.perform_action,
                     connection="sonic",
                     action="get-stored-data",
-                    params=[user_id, "habit_completion"]  # Lista de parâmetros na ordem correta
+                    params=[user_id, "habit_completion"]  
                 )
                 
                 if stored_data is None:
@@ -406,7 +400,7 @@ class ZerePyServer:
                         "responses": []
                     }
                 
-                # Processar os dados para extrair as respostas e análises
+                # Process data to extract responses and analyses
                 user_responses = []
                 for entry in stored_data:
                     try:

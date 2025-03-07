@@ -1,4 +1,4 @@
-// Função para carregar o agente
+// Function to load the agent
 export async function loadAgent(agentName) {
   try {
     const response = await fetch(
@@ -19,7 +19,7 @@ export async function loadAgent(agentName) {
   }
 }
 
-// Função para tentar uma operação com retentativas
+// Function to retry an operation with retries
 async function retryOperation(operation, maxRetries = 3, delay = 2000) {
   let lastError;
 
@@ -30,20 +30,19 @@ async function retryOperation(operation, maxRetries = 3, delay = 2000) {
       console.log(`Attempt ${attempt} failed: ${error.message}`);
       lastError = error;
 
-      // Se for um timeout (504), espere e tente novamente
+      // If it's a timeout (504), wait and try again
       if (error.message.includes("504") || error.message.includes("timeout")) {
         console.log(`Retrying in ${delay / 1000} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
-        // Aumenta o delay para a próxima tentativa
+        // Increase delay for next attempt
         delay = delay * 1.5;
       } else {
-        // Se não for timeout, não tente novamente
+        // If not timeout, don't retry
         throw error;
       }
     }
   }
 
-  // Se chegou aqui, todas as tentativas falharam
   throw lastError;
 }
 
@@ -79,7 +78,6 @@ export async function analyzeBehavior(behaviorData) {
     const data = await retryOperation(makeRequest);
 
     if (data.status === "success") {
-      // Extrair o hash da blockchain_tx
       const txHash = data.blockchain_tx?.match(/0x[a-fA-F0-9]{64}/)?.[0];
 
       if (data.analysis) {
@@ -101,7 +99,6 @@ export async function analyzeBehavior(behaviorData) {
   }
 }
 
-// Função para buscar análise por hash
 export async function getAnalysisByHash(userId, txHash) {
   try {
     const response = await fetch(

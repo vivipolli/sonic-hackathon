@@ -5,7 +5,7 @@ import { useWeb3Auth } from '@web3auth/modal-react-hooks'
 
 export function PatientForm() {
     const navigate = useNavigate()
-    const { userEmail } = useWeb3Auth();
+    const { userEmail, userInfo } = useWeb3Auth();
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -17,10 +17,11 @@ export function PatientForm() {
     })
 
     const generatePatientId = () => {
-        const timestamp = Date.now()
-        const email = userEmail || 'anonymous'
-        const emailHash = btoa(email).replace(/[^a-zA-Z0-9]/g, '')
-        return `${emailHash}-${timestamp}`
+        if (!userEmail || !userInfo?.idToken) {
+            throw new Error('User must be logged in');
+        }
+        const uniqueId = JSON.parse(atob(userInfo?.idToken.split('.')[1])).sub;
+        return btoa(`${userEmail}-${uniqueId}`).replace(/[^a-zA-Z0-9]/g, '');
     }
 
     const handleChange = (e) => {
@@ -51,7 +52,7 @@ export function PatientForm() {
             const response = await analyzeBehavior(analysisData)
 
             if (response && response.txHash) {
-                // Salvar com o hash da transação e timestamp
+                // Save analysis with transaction hash and timestamp
                 const analysisWithMetadata = {
                     ...response,
                     timestamp: new Date().toISOString()
@@ -59,7 +60,6 @@ export function PatientForm() {
 
                 localStorage.setItem('analysisResults', JSON.stringify(analysisWithMetadata))
 
-                // Também salvar no histórico
                 const storedAnalyses = JSON.parse(
                     localStorage.getItem(`analyses_${patientId}`) || '[]'
                 )
