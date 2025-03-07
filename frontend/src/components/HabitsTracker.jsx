@@ -13,70 +13,57 @@ export function HabitsTracker() {
     const [error, setError] = useState(null)
 
     useEffect(() => {
-        async function fetchAnalysis() {
+        function loadHabits() {
             try {
                 const patientId = localStorage.getItem('patientId')
+                const analysisResults = localStorage.getItem('analysisResults')
 
-                if (!patientId) {
+                if (!patientId || !analysisResults) {
                     navigate('/form')
                     return
                 }
 
-                let analysisResults = localStorage.getItem('analysisResults')
+                const parsedResults = JSON.parse(analysisResults)
 
-                if (analysisResults) {
-                    try {
-                        const parsedContent = JSON.parse(analysisResults)
-                        if (parsedContent?.habits) {
-                            // Extrai os hábitos do texto formatado
-                            const habitsList = parsedContent.habits
-                                .split(/\d+\.\s+\*\*/)
-                                .slice(1)
-                                .map((habitText, index) => {
-                                    // Extrai o título (texto entre os primeiros **)
-                                    const title = habitText.match(/^([^*]+)/)?.[1]?.trim() || ''
+                if (parsedResults.habits) {
+                    const habitsList = parsedResults.habits
+                        .split(/\d+\.\s+\*\*/)
+                        .slice(1)
+                        .map((habitText, index) => {
+                            const title = habitText.match(/^([^*]+)/)?.[1]?.trim() || ''
+                            const description = habitText.match(/Description:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
+                            const implementation = habitText.match(/Implementation:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
+                            const scientific = habitText.match(/Scientific Basis:\*\*\s*([^-\n]+)/)?.[1]?.trim() || ''
 
-                                    // Extrai description, implementation e scientific basis
-                                    const description = habitText.match(/Description:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
-                                    const implementation = habitText.match(/Implementation:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
-                                    const scientific = habitText.match(/Scientific Basis:\*\*\s*([^-\n]+)/)?.[1]?.trim() || ''
+                            return {
+                                id: index + 1,
+                                title,
+                                description,
+                                details: implementation,
+                                reference: {
+                                    title: scientific,
+                                    publisher: ''
+                                },
+                                daysCompleted: []
+                            }
+                        })
+                        .filter(habit => habit.title)
 
-                                    return {
-                                        id: index + 1,
-                                        title: title,
-                                        description: description,
-                                        details: implementation,
-                                        reference: {
-                                            title: scientific,
-                                            publisher: '' // Opcional, se quiser adicionar depois
-                                        },
-                                        daysCompleted: []
-                                    }
-                                })
-                                .filter(habit => habit.title) // Remove hábitos sem título
-
-                            console.log('Parsed habits:', habitsList) // Para debug
-                            setHabits(habitsList)
-                            setError(null)
-                            return
-                        }
-                    } catch (err) {
-                        console.error('Error parsing analysisResults:', err)
-                    }
+                    setHabits(habitsList)
+                    setError(null)
+                } else {
+                    setError('No habits recommendations found')
+                    navigate('/form')
                 }
-
-                setError('No habits recommendations found')
-                navigate('/form')
-
             } catch (err) {
-                console.error('Error fetching analysis:', err)
+                console.error('Error loading habits:', err)
                 setError('Failed to load habits. Please try again later.')
             } finally {
                 setLoading(false)
             }
         }
 
-        fetchAnalysis()
+        loadHabits()
     }, [navigate])
 
     const daysOfWeek = [
@@ -120,7 +107,7 @@ export function HabitsTracker() {
             habit.daysCompleted.includes(selectedDay)
         ).length
         const totalHabits = habits.length
-        const percentage = (completedHabits / totalHabits) * 100
+        const percentage = totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0
         return Math.round(percentage)
     }
 

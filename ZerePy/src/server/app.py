@@ -9,6 +9,7 @@ import signal
 import threading
 from pathlib import Path
 from src.cli import ZerePyCLI
+from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("server/app")
@@ -29,6 +30,7 @@ class BehaviorRequest(BaseModel):
     trigger_situations: str
     consequences: str
     previous_attempts: str
+    user_id: str
 
 class ServerState:
     """Simple state management for the server"""
@@ -240,11 +242,18 @@ class ZerePyServer:
         async def analyze_behavior(request: BehaviorRequest):
             """Analyze behavior and suggest habits"""
             if not self.state.cli.agent:
-                # Tenta recarregar o último agente se necessário
                 if not await self.state.load_agent("mentalhealthai"):
                     raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
             
             try:
+                # Preparar os dados do usuário para armazenamento
+                user_responses = {
+                    "current_behavior": request.current_behavior,
+                    "trigger_situations": request.trigger_situations,
+                    "consequences": request.consequences,
+                    "previous_attempts": request.previous_attempts
+                }
+
                 # Usar diretamente a ação suggest-daily-habits
                 health_metrics = {
                     "Current Behavior": request.current_behavior,
@@ -267,17 +276,171 @@ class ZerePyServer:
                 if not result:
                     raise HTTPException(status_code=400, detail="Failed to generate analysis")
                 
-                return {
-                    "status": "success",
-                    "analysis": result,
-                    "message": "Behavioral analysis completed successfully"
-                }
-                
+                # Armazenar resultado e respostas na blockchain
+                try:
+                    storage_data = {
+                        "user_id": request.user_id,
+                        "responses": user_responses,  # Adicionando as respostas do usuário
+                        "analysis": result,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    }
+                    
+                    # Passar os parâmetros como uma lista
+                    tx_hash = await asyncio.to_thread(
+                        self.state.cli.agent.perform_action,
+                        connection="sonic",
+                        action="store-data",
+                        params=[json.dumps(storage_data), "behavior_analysis"]
+                    )
+                    
+                    if not tx_hash:
+                        raise Exception("Failed to store data on blockchain")
+                        
+                    return {
+                        "status": "success",
+                        "analysis": result,
+                        "message": "Behavioral analysis completed and stored successfully",
+                        "blockchain_tx": tx_hash,
+                        "user_responses": user_responses  # Incluindo as respostas no retorno
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Failed to store analysis on blockchain: {e}")
+                    raise HTTPException(
+                        status_code=500, 
+                        detail="Analysis completed but storage failed"
+                    )
+                    
             except asyncio.TimeoutError:
                 logger.error("Request to EternalAI timed out")
                 raise HTTPException(status_code=504, detail="Request timed out")
             except Exception as e:
                 logger.error(f"Error in analyze_behavior: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.patch("/habits/{habit_id}")
+        async def update_habit(habit_id: str, user_id: str, completed: bool):
+            """Update habit completion status"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded")
+            
+            try:
+                # Preparar dados do hábito
+                habit_data = {
+                    "user_id": user_id,
+                    "habit_id": habit_id,
+                    "completed": completed,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                
+                # Corrigido: Passar os parâmetros como uma lista
+                tx_hash = await asyncio.to_thread(
+                    self.state.cli.agent.perform_action,
+                    connection="sonic",
+                    action="store-data",
+                    params=[json.dumps(habit_data), "habit_completion"]  # Lista de parâmetros na ordem correta
+                )
+
+                if not tx_hash:
+                    raise Exception("Failed to store data on blockchain")
+
+                return {
+                    "status": "success",
+                    "message": "Habit update stored successfully",
+                    "blockchain_tx": tx_hash
+                }
+            except Exception as e:
+                logger.error(f"Error updating habit: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/habits/progress/{user_id}")
+        async def get_progress(user_id: str):
+            """Get habit progress for a user"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded")
+            
+            try:
+                # Corrigido: Passar os parâmetros como uma lista
+                stored_data = await asyncio.to_thread(
+                    self.state.cli.agent.perform_action,
+                    connection="sonic",
+                    action="get-stored-data",
+                    params=[user_id, "habit_completion"]  # Lista de parâmetros na ordem correta
+                )
+                
+                if stored_data is None:
+                    raise HTTPException(status_code=500, detail="Failed to retrieve data from blockchain")
+                    
+                return {
+                    "status": "success",
+                    "habits": stored_data
+                }
+            except Exception as e:
+                logger.error(f"Error getting habit progress: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/user/responses/{user_id}")
+        async def get_user_responses(user_id: str, tx_hash: str):
+            """Get user's questionnaire responses"""
+            if not self.state.cli.agent:
+                raise HTTPException(status_code=400, detail="No agent loaded")
+            
+            if not tx_hash:
+                raise HTTPException(status_code=400, detail="Transaction hash is required")
+            
+            try:
+                stored_data = await asyncio.to_thread(
+                    self.state.cli.agent.perform_action,
+                    connection="sonic",
+                    action="get-stored-data",
+                    params=[user_id, "behavior_analysis", tx_hash]
+                )
+                
+                logger.info(f"Raw stored data: {json.dumps(stored_data, indent=2)}")
+                
+                if not stored_data:
+                    logger.warning("No stored data found")
+                    return {
+                        "status": "success",
+                        "message": "No responses found for this transaction",
+                        "responses": []
+                    }
+                
+                # Processar os dados para extrair as respostas e análises
+                user_responses = []
+                for entry in stored_data:
+                    try:
+                        logger.info(f"Processing entry: {json.dumps(entry, indent=2)}")
+                        data = entry["data"]
+                        
+                        response_entry = {
+                            "timestamp": entry["timestamp"],
+                            "tx_hash": entry["tx_hash"],
+                            "responses": data.get("responses", {}),
+                            "analysis": data.get("analysis", "")
+                        }
+                        user_responses.append(response_entry)
+                        logger.info("Entry added to responses")
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to process entry: {str(e)}")
+                        continue
+                
+                if not user_responses:
+                    return {
+                        "status": "success",
+                        "message": "No responses found for this transaction",
+                        "responses": []
+                    }
+                    
+                return {
+                    "status": "success",
+                    "user_id": user_id,
+                    "responses": user_responses
+                }
+                
+            except Exception as e:
+                logger.error(f"Error retrieving user responses: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
 def create_app():

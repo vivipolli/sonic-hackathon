@@ -123,3 +123,45 @@ def swap_sonic(agent, **kwargs):
     except Exception as e:
         logger.error(f"Failed to swap tokens: {str(e)}")
         return None
+
+@register_action("store-data")
+def store_data(agent, **kwargs):
+    """Store data on Sonic blockchain
+    """
+    try:
+        data = kwargs.get("data")
+        data_type = kwargs.get("data_type")
+        
+        if not data or not data_type:
+            logger.error("Missing required parameters: data and data_type")
+            return None
+            
+        return agent.connection_manager.connections["sonic"].store_data(
+            data=data,
+            data_type=data_type
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to store data: {str(e)}")
+        return None
+
+@register_action("get-stored-data")
+def get_stored_data(agent, **kwargs):
+    """Retrieve stored data from Sonic blockchain
+    """
+    try:
+        user_id = kwargs.get("user_id")
+        data_type = kwargs.get("data_type")
+        
+        if not user_id:
+            logger.error("Missing required parameter: user_id")
+            return None
+            
+        return agent.connection_manager.connections["sonic"].get_stored_data(
+            user_id=user_id,
+            data_type=data_type
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve stored data: {str(e)}")
+        return None

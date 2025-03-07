@@ -2,6 +2,7 @@ import logging
 import os
 import requests
 import time
+import json
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv, set_key
 from web3 import Web3
@@ -142,6 +143,23 @@ class SonicConnection(BaseConnection):
                     ActionParameter("slippage", False, float, "Max slippage percentage")
                 ],
                 description="Swap tokens"
+            ),
+            "store-data": Action(
+                name="store-data",
+                parameters=[
+                    ActionParameter("data", True, str, "Data to store on chain"),
+                    ActionParameter("data_type", True, str, "Type of data being stored")
+                ],
+                description="Store data on Sonic blockchain"
+            ),
+            "get-stored-data": Action(
+                name="get-stored-data",
+                parameters=[
+                    ActionParameter("user_id", True, str, "User ID to fetch data for"),
+                    ActionParameter("data_type", False, str, "Optional type of data to fetch"),
+                    ActionParameter("tx_hash", False, str, "Optional transaction hash to fetch data for")
+                ],
+                description="Retrieve stored data from Sonic blockchain"
             )
         }
 
@@ -445,6 +463,94 @@ class SonicConnection(BaseConnection):
         except Exception as e:
             logger.error(f"Swap failed: {e}")
             raise
+
+    def store_data(self, data: str, data_type: str) -> str:
+        """Store data on Sonic blockchain"""
+        try:
+            private_key = os.getenv('SONIC_PRIVATE_KEY')
+            account = self._web3.eth.account.from_key(private_key)
+            
+            # Prepare the data
+            storage_data = {
+                "type": data_type,
+                "data": data,
+                "timestamp": int(time.time())
+            }
+            
+            # Convert to hex string
+            hex_data = self._web3.to_hex(text=json.dumps(storage_data))
+            
+            # Prepare transaction
+            tx = {
+                'nonce': self._web3.eth.get_transaction_count(account.address),
+                'to': account.address,  # Store in own address for now
+                'value': 0,
+                'gas': 100000,  # Estimated gas for data storage
+                'gasPrice': self._web3.eth.gas_price,
+                'chainId': self._web3.eth.chain_id,
+                'data': hex_data
+            }
+            
+            # Sign and send transaction
+            signed = account.sign_transaction(tx)
+            tx_hash = self._web3.eth.send_raw_transaction(signed.rawTransaction)
+            
+            # Return explorer link
+            tx_link = self._get_explorer_link(tx_hash.hex())
+            return f"📝 Data stored on chain: {tx_link}"
+            
+        except Exception as e:
+            logger.error(f"Failed to store data: {e}")
+            raise
+
+    def get_stored_data(self, user_id: str, data_type: Optional[str] = None, tx_hash: str = None) -> list:
+        """Retrieve stored data from Sonic blockchain"""
+        try:
+            private_key = os.getenv('SONIC_PRIVATE_KEY')
+            account = self._web3.eth.account.from_key(private_key)
+            stored_data = []
+            
+            if not tx_hash:
+                raise ValueError("Transaction hash is required")
+            
+            try:
+                tx = self._web3.eth.get_transaction(tx_hash)
+                if tx and tx.input != '0x':
+                    try:
+                        hex_data = tx.input
+                        text_data = self._web3.to_text(hex_data)
+                        logger.info(f"Found transaction data for hash {tx_hash}")
+                        
+                        decoded_data = json.loads(text_data)
+                        inner_data = json.loads(decoded_data.get("data", "{}"))
+                        
+                        # Verificar tipo e user_id
+                        current_type = decoded_data.get("type")
+                        current_user = inner_data.get("user_id")
+                        
+                        if (not data_type or current_type == data_type) and current_user == user_id:
+                            stored_data.append({
+                                "tx_hash": tx.hash.hex(),
+                                "block_number": tx.blockNumber,
+                                "timestamp": decoded_data.get("timestamp"),
+                                "data": inner_data
+                            })
+                            logger.info(f"Added data from transaction {tx_hash}")
+                    except Exception as e:
+                        logger.warning(f"Error processing transaction {tx_hash}: {str(e)}")
+                else:
+                    logger.warning(f"Transaction {tx_hash} not found or has no data")
+                
+            except Exception as e:
+                logger.warning(f"Could not fetch transaction {tx_hash}: {str(e)}")
+            
+            logger.info(f"Search complete. Found {len(stored_data)} transactions with data")
+            return stored_data
+            
+        except Exception as e:
+            logger.error(f"Failed to retrieve stored data: {str(e)}")
+            raise
+
     def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute a Sonic action with validation"""
         if action_name not in self.actions:

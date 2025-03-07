@@ -49,10 +49,8 @@ async function retryOperation(operation, maxRetries = 3, delay = 2000) {
 
 export async function analyzeBehavior(behaviorData) {
   try {
-    // Primeiro, carrega o agente
     await loadAgent("mentalhealthai");
 
-    // Função que faz a requisição
     const makeRequest = async () => {
       const response = await fetch("http://localhost:8000/analyze", {
         method: "POST",
@@ -60,6 +58,7 @@ export async function analyzeBehavior(behaviorData) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          user_id: behaviorData.user_id,
           current_behavior: behaviorData.behavior,
           trigger_situations: behaviorData.antecedent,
           consequences: behaviorData.consequence,
@@ -77,22 +76,61 @@ export async function analyzeBehavior(behaviorData) {
       return response.json();
     };
 
-    // Tenta fazer a requisição com retentativas
     const data = await retryOperation(makeRequest);
 
-    if (data.status === "success" && data.analysis) {
-      const [generalAnalysis, habitsSection] = data.analysis.split("Habits:");
+    if (data.status === "success") {
+      // Extrair o hash da blockchain_tx
+      const txHash = data.blockchain_tx?.match(/0x[a-fA-F0-9]{64}/)?.[0];
+
+      if (data.analysis) {
+        const [generalAnalysis, habitsSection] = data.analysis.split("Habits:");
+        return {
+          generalAnalysis: generalAnalysis.replace("GENERAL:", "").trim(),
+          habits: habitsSection ? habitsSection.trim() : "",
+          message: data.message,
+          txHash: txHash,
+          user_responses: data.user_responses,
+          timestamp: new Date().toISOString(),
+        };
+      }
+    }
+    throw new Error("Failed to get analysis from server");
+  } catch (error) {
+    console.error("Error:", error);
+    throw error;
+  }
+}
+
+// Função para buscar análise por hash
+export async function getAnalysisByHash(userId, txHash) {
+  try {
+    const response = await fetch(
+      `http://localhost:8000/user/responses/${userId}?tx_hash=${txHash}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status === "success" && data.responses?.[0]?.data) {
+      const analysisData = data.responses[0].data;
+      const [generalAnalysis, habitsSection] =
+        analysisData.analysis.split("Habits:");
 
       return {
         generalAnalysis: generalAnalysis.replace("GENERAL:", "").trim(),
         habits: habitsSection ? habitsSection.trim() : "",
-        message: data.message,
+        user_responses: analysisData.responses,
+        txHash: data.responses[0].tx_hash,
+        timestamp: analysisData.timestamp,
       };
-    } else {
-      throw new Error("Failed to get analysis from server");
     }
+
+    throw new Error("No analysis data found");
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error fetching analysis:", error);
     throw error;
   }
 }

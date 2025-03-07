@@ -3,33 +3,58 @@ import { useNavigate } from 'react-router-dom'
 
 export function AnalysisResult() {
     const [analysis, setAnalysis] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const navigate = useNavigate()
 
     useEffect(() => {
-        const analysisResults = localStorage.getItem('analysisResults')
+        function loadAnalysis() {
+            try {
+                const analysisResults = localStorage.getItem('analysisResults')
+                const patientId = localStorage.getItem('patientId')
 
-        if (!analysisResults) {
-            navigate('/form')
-            return
+                if (!analysisResults || !patientId) {
+                    navigate('/form')
+                    return
+                }
+
+                const parsedResults = JSON.parse(analysisResults)
+                setAnalysis(parsedResults)
+            } catch (error) {
+                console.error('Error loading analysis:', error)
+                setError('Failed to load analysis. Please try again.')
+            } finally {
+                setLoading(false)
+            }
         }
 
-        try {
-            const parsedAnalysis = JSON.parse(analysisResults)
-            setAnalysis(parsedAnalysis)
-        } catch (error) {
-            console.error('Error parsing analysis results:', error)
-            navigate('/form')
-        }
+        loadAnalysis()
     }, [navigate])
 
     const handleContinue = () => {
         navigate('/habits')
     }
 
-    if (!analysis) {
+    if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen bg-gray-50">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="max-w-2xl mx-auto p-6 mt-8">
+                <div className="bg-red-50 rounded-lg p-6">
+                    <p className="text-red-700">{error}</p>
+                    <button
+                        onClick={() => navigate('/form')}
+                        className="mt-4 px-4 py-2 bg-sky-600 text-white rounded-md"
+                    >
+                        Return to Form
+                    </button>
+                </div>
             </div>
         )
     }
@@ -42,7 +67,7 @@ export function AnalysisResult() {
                 <div className="prose prose-sky max-w-none">
                     <div className="bg-sky-50 rounded-lg p-6 mb-8">
                         <p className="text-gray-700 whitespace-pre-wrap">
-                            {analysis.generalAnalysis}
+                            {analysis?.generalAnalysis}
                         </p>
                     </div>
                 </div>

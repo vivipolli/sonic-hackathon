@@ -40,10 +40,8 @@ export function PatientForm() {
             const patientId = generatePatientId()
             localStorage.setItem('patientId', patientId)
 
-            // Criar viewing key antes de enviar a análise
-
             const analysisData = {
-                patient_id: patientId,
+                user_id: patientId,
                 behavior: formData.behavior,
                 antecedent: formData.antecedent,
                 consequence: formData.consequence,
@@ -52,15 +50,20 @@ export function PatientForm() {
 
             const response = await analyzeBehavior(analysisData)
 
-            if (response) {
-                // Salvar com a chave correta 'analysisResults'
-                localStorage.setItem('analysisResults', JSON.stringify(response))
+            if (response && response.txHash) {
+                // Salvar com o hash da transação e timestamp
+                const analysisWithMetadata = {
+                    ...response,
+                    timestamp: new Date().toISOString()
+                }
 
-                // Também salvar no histórico de análises do paciente
+                localStorage.setItem('analysisResults', JSON.stringify(analysisWithMetadata))
+
+                // Também salvar no histórico
                 const storedAnalyses = JSON.parse(
                     localStorage.getItem(`analyses_${patientId}`) || '[]'
                 )
-                storedAnalyses.push(response)
+                storedAnalyses.push(analysisWithMetadata)
                 localStorage.setItem(
                     `analyses_${patientId}`,
                     JSON.stringify(storedAnalyses)
@@ -68,7 +71,7 @@ export function PatientForm() {
 
                 navigate('/analysis')
             } else {
-                throw new Error('No analysis results received')
+                throw new Error('No transaction hash received')
             }
         } catch (error) {
             console.error('Error in form submission:', error)
