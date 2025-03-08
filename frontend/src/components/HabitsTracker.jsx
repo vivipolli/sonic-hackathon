@@ -32,16 +32,24 @@ export function HabitsTracker() {
                         .map((habitText, index) => {
                             const title = habitText.match(/^([^*]+)/)?.[1]?.trim() || ''
                             const description = habitText.match(/Description:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
-                            const implementation = habitText.match(/Implementation:\*\*\s*([^-]+)/)?.[1]?.trim() || ''
-                            const scientific = habitText.match(/Scientific Basis:\*\*\s*([^-\n]+)/)?.[1]?.trim() || ''
+                            const implementationMatch = habitText.match(/Implementation:\*\*\s*([\s\S]*?)(?=\s*-\s*\*\*Scientific Basis)/);
+                            const implementation = implementationMatch
+                                ? implementationMatch[1]
+                                    .split('-')
+                                    .filter(item => item.trim())
+                                    .map(item => item.trim())
+                                    .join('\n\n• ')
+                                : ''
+                            const scientificMatch = habitText.match(/Scientific Basis:\*\*\s*([\s\S]*?)(?=\s*\d+\.|$)/);
+                            const scientific = scientificMatch ? scientificMatch[1].trim() : ''
 
                             return {
                                 id: index + 1,
                                 title,
                                 description,
-                                details: implementation,
+                                details: `Implementation Steps:\n\n• ${implementation}`,
                                 reference: {
-                                    title: scientific,
+                                    title: `Scientific Basis: ${scientific}`,
                                     publisher: ''
                                 },
                                 daysCompleted: []
@@ -208,22 +216,21 @@ export function HabitsTracker() {
                                 {expandedHabit === habit.id && (
                                     <div className="mt-3 space-y-3">
                                         <div className="p-3 bg-sky-50 rounded-md">
-                                            <p className="text-sm text-gray-700">{habit.details}</p>
+                                            <p className="text-sm text-gray-700 whitespace-pre-line">
+                                                {habit.details}
+                                            </p>
                                         </div>
                                         {habit.reference && (
                                             <div className="p-3 bg-gray-50 rounded-md">
                                                 <p className="text-xs text-gray-500 mb-1">Scientific Reference:</p>
-                                                <a
-                                                    href={habit.reference.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-sky-600 hover:text-sky-800 hover:underline"
-                                                >
+                                                <p className="text-sm text-gray-700">
                                                     {habit.reference.title}
-                                                </a>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Published in: {habit.reference.publisher}
                                                 </p>
+                                                {habit.reference.publisher && (
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        Published in: {habit.reference.publisher}
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                     </div>

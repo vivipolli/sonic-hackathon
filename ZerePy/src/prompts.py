@@ -25,58 +25,63 @@ POST_ECHOCHAMBER_PROMPT = ("Context:\n- Room Topic: {room_topic}\n- Tags: {tags}
                            )
 
 # Mental Health Analysis prompts
-ANALYZE_AND_SUGGEST_PROMPT = ("""Functional behavioral analysis based on radical behaviorism and intervention technique suggestions [or habits]
+# ANALYZE_AND_SUGGEST_PROMPT = ("""Functional behavioral analysis based on radical behaviorism and intervention technique suggestions [or habits]
 
-BEHAVIORAL DATA:
-- Current behavior you want to analyze: "{behavior}"
-- Context or environment in which the behavior occurs: "{antecedent}"
-- Immediate consequences of the analyzed behavior (what happens right after the behavior): "{consequence}"
-- Previous attempts to change the analyzed behavior: "{previous_attempts}"
+# BEHAVIORAL DATA:
+# - Current behavior you want to analyze: "{behavior}"
+# - Context or environment in which the behavior occurs: "{antecedent}"
+# - Immediate consequences of the analyzed behavior (what happens right after the behavior): "{consequence}"
+# - Previous attempts to change the analyzed behavior: "{previous_attempts}"
 
-INSTRUCTIONS:
-1. First, perform a functional analysis based on radical behaviorism and show the behavioral pattern considering:
-* The context/environment in which the behavior occurs and the immediate consequence of the behavior
-- Frequency and intensity of the behavior
-- Other contexts/environments where the same behavior occurs
-- Short and long-term consequences
-- Behavioral excesses and deficits resulting from the established pattern
-- Impact on daily functioning
-- Potential barriers to change
-- Strengths from previous attempts
+# INSTRUCTIONS:
+# 1. First, perform a functional analysis based on radical behaviorism and show the behavioral pattern considering:
+# * The context/environment in which the behavior occurs and the immediate consequence of the behavior
+# - Frequency and intensity of the behavior
+# - Other contexts/environments where the same behavior occurs
+# - Short and long-term consequences
+# - Behavioral excesses and deficits resulting from the established pattern
+# - Impact on daily functioning
+# - Potential barriers to change
+# - Strengths from previous attempts
 
-2. Based on this analysis, suggest 3-4 practical habits. For each habit, provide:
-- Habit name: short and clear title
-- Description: brief explanation of the habit
-- Implementation: detailed step-by-step execution
-- Scientific basis: reference or evidence supporting this habit
+# 2. Based on this analysis, suggest 3-4 practical habits. For each habit, provide:
+# - Habit name: short and clear title
+# - Description: brief explanation of the habit
+# - Implementation: detailed step-by-step execution
+# - Scientific basis: reference or evidence supporting this habit
 
-RESPONSE FORMAT (please use this format and the exact keywords - DO NOT CHANGE THE WORD 'Habits:'):
-GENERAL:
-[Behavioral analysis, more than 3 paragraphs]
+# RESPONSE FORMAT (please use this format and the exact keywords - DO NOT CHANGE THE WORD 'Habits:'):
+# GENERAL:
+# [Behavioral analysis, more than 3 paragraphs]
 
-Habits:
-1. **[Habit name]**
-   - **Description:** [brief description]
-   - **Implementation:** [detailed steps]
-   - **Scientific Basis:** [reference or evidence]
+# Habits:
+# 1. **[Habit name]**
+#    - **Description:** [brief description]
+#    - **Implementation:** [detailed steps]
+#    - **Scientific Basis:** [reference or evidence]
 
-[Repeat format for each suggested habit]
+# [Repeat format for each suggested habit]
 
-IMPORTANT: You MUST use exactly "Habits:" as the section header for the habits list. Do not use any other variations like "Recommended habits", "Suggested habits", etc. The exact keyword "Habits:" is required for proper parsing of the response.""")
+# IMPORTANT: You MUST use exactly "Habits:" as the section header for the habits list. Do not use any other variations like "Recommended habits", "Suggested habits", etc. The exact keyword "Habits:" is required for proper parsing of the response.""")
 
-# Test version of the prompt (simplified)
-TEST_ANALYZE_PROMPT = ("Analyze this behavior and suggest habits:\n\n"
-                      "BEHAVIOR:\n"
-                      "- Current: {behavior}\n"
-                      "- Context: {antecedent}\n"
-                      "- Results: {consequence}\n"
-                      "- Past tries: {previous_attempts}\n\n"
-                      "Please analyze and suggest 3 habits. Use exactly 'Habits:' as header.\n\n"
-                      "Format:\n"
-                      "GENERAL:\n"
-                      "[Brief analysis]\n\n"
-                      "Habits:\n"
-                      "1. **[Name]**\n"
-                      "   - **Description:** [brief]\n"
-                      "   - **Implementation:** [steps]\n"
-                      "   - **Scientific Basis:** [evidence]")
+ANALYZE_AND_SUGGEST_PROMPT = ("Context:\n"
+                               "- Behavior: \"{behavior}\"\n"
+                               "- Environment: {antecedent}\n"
+                               "- Immediate Consequences: {consequence}\n"
+                               "- Previous Attempts: {previous_attempts}\n\n"
+                               "Task:\n"
+                               "Perform a functional behavioral analysis and suggest 3-4 evidence-based habits.\n\n"
+                               "Guidelines:\n"
+                               "- Analyze behavior patterns, frequency, and impact\n"
+                               "- Identify short- and long-term consequences\n"
+                               "- Address barriers to change\n"
+                               "- Highlight strengths from past attempts\n\n"
+                               "Habits:\n"
+                               "1. **[Habit Name]**\n"
+                               "   - **Description:** [Brief explanation]\n"
+                               "   - **Implementation:** [Step-by-step guide]\n"
+                               "   - **Scientific Basis:** [Reference or evidence]\n\n"
+                               "[Repeat format for each suggested habit]\n\n"
+                               "Ensure the section header 'Habits:' remains unchanged for proper parsing.<|endoftext|>")
+
+

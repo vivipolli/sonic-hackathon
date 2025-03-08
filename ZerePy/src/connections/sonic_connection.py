@@ -485,11 +485,16 @@ class SonicConnection(BaseConnection):
                 'nonce': self._web3.eth.get_transaction_count(account.address),
                 'to': account.address,  # Store in own address for now
                 'value': 0,
-                'gas': 100000,  # Estimated gas for data storage
                 'gasPrice': self._web3.eth.gas_price,
                 'chainId': self._web3.eth.chain_id,
                 'data': hex_data
             }
+
+            try:
+                tx['gas'] = self._web3.eth.estimate_gas(tx)
+            except Exception as e:
+                logger.warning(f"Gas estimation failed: {e}, using default gas limit")
+                tx['gas'] = 1000000  
             
             # Sign and send transaction
             signed = account.sign_transaction(tx)

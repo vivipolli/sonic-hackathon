@@ -7,7 +7,7 @@ from openai import OpenAI
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 from web3 import Web3
 import requests
-from src.prompts import TEST_ANALYZE_PROMPT
+from src.prompts import ANALYZE_AND_SUGGEST_PROMPT
 
 logger = logging.getLogger("connections.eternalai_connection")
 IPFS = "ipfs://"
@@ -174,26 +174,9 @@ class EternalAIConnection(BaseConnection):
                 chain_id = "45762"
             logger.info(f"chain_id {chain_id}")
 
-            # Log dos parâmetros recebidos
-            logger.info(f"Received prompt: {prompt}")
-            logger.info(f"Initial system_prompt: {system_prompt}")
-            logger.info(f"Kwargs: {kwargs}")
-
-            agent_id = self.config["agent_id"] or None
-            contract_address = self.config["contract_address"] or None
-            rpc = self.config["rpc_url"] or None
-
-            if agent_id and contract_address and rpc:
-                logger.info(f"agent_id: {agent_id}, contract_address: {contract_address}")
-                # call on-chain system prompt
-                web3 = Web3(Web3.HTTPProvider(rpc))
-                logger.info(f"web3 connected to {rpc} {web3.is_connected()}")
-
-            stream = self.config["stream"]
-            logger.info(f"call completions api stream {stream}")
+            stream = self.config.get("stream", False)
             logger.info(f"Sending to API - Messages: {[{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': prompt}]}")
 
-            self.config["stream"] = False  # Forçar sem stream
             completion = client.chat.completions.create(
                 model=model,
                 messages=[
@@ -202,36 +185,20 @@ class EternalAIConnection(BaseConnection):
                 ],
                 extra_body={"chain_id": chain_id},
                 stream=stream,
-                timeout=180.0  # Aumentar para 3 minutos
+                timeout=180.0
             )
+
             if not stream:
                 if completion.choices is None:
-                    raise EternalAIAPIError(f"Text generation failed: completion.choices is None")
-                try:
-                    if completion.onchain_data is not None:
-                        logger.info(f"response onchain data: {json.dumps(completion.onchain_data, indent=4)}")
-                except:
-                    logger.info(f"response onchain data object: {completion.onchain_data}", )
-                logger.info(
-                    f"end call completions api with content:\n\n {completion.choices[0].message.content} \n\n\n\n")
+                    raise EternalAIAPIError("Text generation failed: no choices in response")
                 return completion.choices[0].message.content
             else:
                 content = ""
-                # logger.info(f"completion {str(completion)}")
                 for chunk in completion:
                     if chunk.choices is not None:
                         delta = chunk.choices[0].delta
                         if delta is not None and delta.content is not None:
                             content += delta.content
-                            # logger.info(f"content -> {delta.content}")
-                    else:
-                        try:
-                            if chunk.onchain_data is not None and chunk.onchain_data.infer_id is not None and chunk.onchain_data.infer_id != "":
-                                logger.info(f"response onchain data: {json.dumps(chunk.onchain_data, indent=4)}")
-                        except:
-                            logger.info(f"response onchain data object: {chunk.onchain_data}", )
-                        break
-                logger.info(f"end call completions api with content:\n\n {content} \n\n\n\n")
                 return content
 
         except Exception as e:
@@ -291,7 +258,7 @@ class EternalAIConnection(BaseConnection):
 
             # Format health data
             metrics = json.loads(health_metrics)
-            prompt = TEST_ANALYZE_PROMPT.format(
+            prompt = ANALYZE_AND_SUGGEST_PROMPT.format(
                 behavior=metrics.get('Current Behavior'),
                 antecedent=metrics.get('Trigger Situations'),
                 consequence=metrics.get('Consequences'),

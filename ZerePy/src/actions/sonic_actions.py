@@ -139,6 +139,7 @@ def store_data(agent, **kwargs):
         return agent.connection_manager.connections["sonic"].store_data(
             data=data,
             data_type=data_type
+            
         )
 
     except Exception as e:

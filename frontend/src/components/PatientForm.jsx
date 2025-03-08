@@ -5,7 +5,7 @@ import { useWeb3Auth } from '@web3auth/modal-react-hooks'
 
 export function PatientForm() {
     const navigate = useNavigate()
-    const { userEmail, userInfo } = useWeb3Auth();
+    const { userInfo } = useWeb3Auth();
 
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -17,11 +17,11 @@ export function PatientForm() {
     })
 
     const generatePatientId = () => {
-        if (!userEmail || !userInfo?.idToken) {
+        if (!userInfo.email || !userInfo?.idToken) {
             throw new Error('User must be logged in');
         }
         const uniqueId = JSON.parse(atob(userInfo?.idToken.split('.')[1])).sub;
-        return btoa(`${userEmail}-${uniqueId}`).replace(/[^a-zA-Z0-9]/g, '');
+        return btoa(`${userInfo.email}-${uniqueId}`).replace(/[^a-zA-Z0-9]/g, '');
     }
 
     const handleChange = (e) => {
@@ -172,7 +172,7 @@ export function PatientForm() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 )}
-                <span>{loading ? 'Analyzing...' : 'Submit Analysis'}</span>
+                <span>{loading ? 'Analyzing...It may take a few minutes.' : 'Submit Analysis'}</span>
             </button>
         </form>
     )

@@ -35,7 +35,7 @@ export function Header() {
                             to="/form"
                             className={`transition-colors ${isActive('/form') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
                         >
-                            Home
+                            Form
                         </Link>
                         <Link
                             to="/habits"
@@ -70,7 +70,7 @@ export function Header() {
                             className={`transition-colors ${isActive('/') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Home
+                            Form
                         </Link>
                         <Link
                             to="/habits"
