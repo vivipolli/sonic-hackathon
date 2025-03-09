@@ -64,7 +64,7 @@ We leverage **Sonic Network**, **EternalAI**, and **Allora** to create a secure 
 
 Required technologies:
 
-- 🐍 Python 3.12+
+- 🐍 Python 3.10+
 - 📦 Poetry (dependency management)
 - 💻 Node.js v16+ (for frontend)
 
@@ -139,6 +139,7 @@ The application will be available at:
 
 ## Short Term (3 months)
 
+- 📜 **Analysis History System**: Implementation of a secure retrieval system where transaction hashes are stored in centralized databases, with analysis recovery linked to both the hash and the encrypted user ID associated with the authentication token ID, ensuring privacy and data integrity.
 - 📊 **Comprehensive Habit Tracking**: Recording of completed habits, habit history, and daily notes for AI-powered progress analysis
 - 🤖 **AI Prompt Optimization**: Refinement of prompt engineering for more accurate and personalized behavioral analysis
 - 🧠 **Insight Optimization with Allora**: Optimization of existing Allora AI integration to enhance behavioral pattern recognition and deliver more personalized intervention recommendations

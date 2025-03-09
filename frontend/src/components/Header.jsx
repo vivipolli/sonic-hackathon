@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useWeb3Auth } from "@web3auth/modal-react-hooks";
+import logo from '../assets/logo.png'
 
 export function Header() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -26,7 +27,7 @@ export function Header() {
             <nav className="container mx-auto px-4 py-4">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center space-x-2">
-                        <span className="text-xl font-semibold text-[#f06315]">BehavAI</span>
+                        <img src={logo} alt="BehavAI Logo" className="w-20 h-16 object-cover" />
                     </Link>
 
                     <div className="hidden md:flex items-center space-x-6">

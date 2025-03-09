@@ -1,7 +1,7 @@
 import { useWeb3Auth } from "@web3auth/modal-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import logo from '../assets/logoIcon.png';
+import logo from '../assets/logo.png';
 
 function Login() {
     const { connect, isConnected } = useWeb3Auth();
@@ -34,7 +34,9 @@ function Login() {
             {/* Content */}
             <div className="w-full max-w-md px-4 sm:px-0">
                 <div className="bg-white/10 p-8 rounded-xl shadow-lg backdrop-blur-md border border-white/30">
-                    <div>
+                    <div className="justify-center items-center">
+                        <img src={logo} alt="BehavAI Logo" className="w-28 h-28 object-cover mx-auto" />
+
                         <h2 className="mt-2 text-center text-3xl text-sky-800">
                             Welcome to BehavAI
                         </h2>

@@ -27,35 +27,24 @@ export function HabitsTracker() {
                 const parsedResults = JSON.parse(analysisResults)
                 setBlockchainTx(parsedResults.txHash)
 
-                // Função auxiliar para extrair hábitos do texto
                 const extractHabits = (text) => {
-                    if (!text) {
-                        console.warn("No habits text provided")
-                        return []
-                    }
+                    if (!text) return []
 
-                    // Remove qualquer texto antes da seção de hábitos
                     const habitsSection = text.split(/Habits:\s*\n/i)[1] || text
-
-                    // Remove qualquer texto conclusivo
                     const habitsOnly = habitsSection.split(/These habits|Remember,/i)[0]
 
-                    // Tenta diferentes padrões para separar os hábitos
                     let habits = []
                     const patterns = [
-                        /\d+\.\s+\*\*[^*]+\*\*/g,    // 1. **Título**
-                        /\d+\.\s+[^*\n]+/g,          // 1. Título
-                        /\*\*[^*]+\*\*/g,            // **Título**
-                        /[-•]\s+[^\n]+/g             // - Título ou • Título
+                        /\d+\.\s+\*\*[^*]+\*\*/g,    // Matches: 1. **Title**
+                        /\d+\.\s+[^*\n]+/g,          // Matches: 1. Title
+                        /\*\*[^*]+\*\*/g,            // Matches: **Title**
+                        /[-•]\s+[^\n]+/g             // Matches: - Title or • Title
                     ]
 
-                    // Tenta cada padrão até encontrar hábitos
                     for (const pattern of patterns) {
                         const matches = habitsOnly.match(pattern)
                         if (matches && matches.length > 0) {
-                            // Divide o texto usando o padrão encontrado
                             const sections = habitsOnly.split(pattern)
-                            // Combina os matches com as seções correspondentes
                             habits = matches.map((match, index) => ({
                                 title: match,
                                 content: sections[index + 1] || ''
@@ -64,44 +53,33 @@ export function HabitsTracker() {
                         }
                     }
 
-                    // Se nenhum padrão funcionou, tenta dividir por números ou traços
-                    if (habits.length === 0) {
-                        const sections = habitsOnly.split(/(?:\d+\.|[-•])\s+/).filter(Boolean)
-                        habits = sections.map(section => ({
-                            title: '',
-                            content: section
-                        }))
-                    }
-
                     return habits.map(({ title, content }, index) => {
-                        // Limpa o título
-                        let cleanTitle = title
-                            .replace(/^\d+\.\s*/, '')  // Remove numeração
-                            .replace(/\*\*/g, '')      // Remove asteriscos
+                        const cleanTitle = title
+                            .replace(/^\d+\.\s*/, '')
+                            .replace(/\*\*/g, '')
                             .trim()
 
-                        // Procura por Description, Implementation e Scientific Basis
                         const descriptionMatch = content.match(/Description:\s*([^\n]+)/)
-                        const implementationMatch = content.match(/Implementation:[\s\S]*?(?=Scientific Basis:|$)/)
+                        const implementationMatch = content.match(/Implementation:\s*([\s\S]*?)(?=Scientific Basis:|$)/)
                         const scientificMatch = content.match(/Scientific Basis:\s*([^\n]+)/)
 
-                        // Extrai descrição
                         const description = descriptionMatch ?
                             descriptionMatch[1].trim() :
                             'No description provided'
 
-                        // Extrai implementação
                         let implementation = ''
                         if (implementationMatch) {
-                            implementation = implementationMatch[0]
-                                .replace(/Implementation:\s*/, '')
-                                .split(/[-•]/)
-                                .filter(step => step.trim())
-                                .map(step => step.trim())
-                                .join('\n\n• ')
+                            const implText = implementationMatch[1].trim()
+                            const steps = implText
+                                .split('\n')
+                                .map(line => line.trim())
+                                .filter(line => line)
+                                .map(line => !line.startsWith('-') && !line.startsWith('•') ? '- ' + line : line)
+                                .filter(line => line !== '-')
+
+                            implementation = steps.join('\n\n')
                         }
 
-                        // Extrai base científica
                         const scientific = scientificMatch ?
                             scientificMatch[1].trim() :
                             'No scientific basis provided'
@@ -110,7 +88,7 @@ export function HabitsTracker() {
                             id: index + 1,
                             title: cleanTitle || `Habit ${index + 1}`,
                             description: description,
-                            details: implementation ? `Implementation Steps:\n\n• ${implementation}` : description,
+                            details: implementation ? `Implementation Steps:\n\n${implementation}` : description,
                             reference: {
                                 title: `Scientific Basis: ${scientific}`,
                                 publisher: ''
@@ -171,9 +149,7 @@ export function HabitsTracker() {
         }))
     }
 
-    const isCheckboxDisabled = (dayIndex) => {
-        return dayIndex > currentDay
-    }
+    const isCheckboxDisabled = (dayIndex) => dayIndex > currentDay
 
     const handleReflectionChange = (e) => {
         setDailyReflections({
@@ -186,9 +162,7 @@ export function HabitsTracker() {
         const completedHabits = habits.filter(habit =>
             habit.daysCompleted.includes(selectedDay)
         ).length
-        const totalHabits = habits.length
-        const percentage = totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0
-        return Math.round(percentage)
+        return habits.length > 0 ? Math.round((completedHabits / habits.length) * 100) : 0
     }
 
     if (loading) {
@@ -223,18 +197,15 @@ export function HabitsTracker() {
                 <h2 className="text-2xl font-bold text-sky-800">Suggested Interventions</h2>
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Daily Progress:</span>
-                    <span className={`font-semibold ${calculateDailyProgress() === 100
-                        ? 'text-green-500'
-                        : calculateDailyProgress() >= 50
-                            ? 'text-sky-600'
-                            : 'text-gray-700'
+                    <span className={`font-semibold ${calculateDailyProgress() === 100 ? 'text-green-500' :
+                        calculateDailyProgress() >= 50 ? 'text-sky-600' :
+                            'text-gray-700'
                         }`}>
                         {calculateDailyProgress()}%
                     </span>
                 </div>
             </div>
 
-            {/* Adiciona informação da blockchain */}
             {blockchainTx && (
                 <div className="mb-6 p-3 bg-gray-50 rounded-md">
                     <details className="text-sm text-gray-600">
