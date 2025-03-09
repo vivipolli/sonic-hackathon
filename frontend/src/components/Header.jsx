@@ -40,7 +40,7 @@ export function Header() {
                             to="/habits"
                             className={`transition-colors ${isActive('/habits') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
                         >
-                            Habits Tracker
+                            Interventions
                         </Link>
                         <Link
                             to="/habits/feedback"

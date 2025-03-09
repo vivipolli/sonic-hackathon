@@ -55,7 +55,8 @@ export function PatientForm() {
                 // Save analysis with transaction hash and timestamp
                 const analysisWithMetadata = {
                     ...response,
-                    timestamp: new Date().toISOString()
+                    // Timestamp já vem da API, mas vamos garantir que existe
+                    timestamp: response.timestamp || new Date().toISOString()
                 }
 
                 localStorage.setItem('analysisResults', JSON.stringify(analysisWithMetadata))
@@ -71,7 +72,7 @@ export function PatientForm() {
 
                 navigate('/analysis')
             } else {
-                throw new Error('No transaction hash received')
+                throw new Error('Invalid response from analysis')
             }
         } catch (error) {
             console.error('Error in form submission:', error)
@@ -105,7 +106,7 @@ export function PatientForm() {
 
                 <div className="mb-4">
                     <label className="block text-gray-700 font-medium mb-2">
-                        2. Antecedent - In what situations, environments, or moments does this behavior occur most frequently?
+                        2. Context - In what situations, environments, or moments does this behavior occur most frequently?
                         <span className="text-sm text-gray-500 block">Provide a concrete example.</span>
                     </label>
                     <textarea
