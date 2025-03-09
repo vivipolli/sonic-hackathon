@@ -32,6 +32,14 @@ class BehaviorRequest(BaseModel):
     previous_attempts: str
     user_id: str
 
+class HabitFeedbackRequest(BaseModel):
+    """Request model for habit feedback"""
+    habit_id: str
+    patient_id: str
+    effectiveness: int
+    feedback: Optional[str] = ""
+    implementation_duration: Optional[int] = 0
+
 class ServerState:
     """Simple state management for the server"""
     def __init__(self):
@@ -99,9 +107,10 @@ class ZerePyServer:
         # Add CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://localhost:5173"], 
-            allow_methods=["*"],  
-            allow_headers=["*"],  
+            allow_origins=["*"],  
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
         
         self.setup_routes()
@@ -435,6 +444,62 @@ class ZerePyServer:
                 
             except Exception as e:
                 logger.error(f"Error retrieving user responses: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/habits/feedback")
+        async def submit_habit_feedback(feedback_request: HabitFeedbackRequest):
+            """Submit feedback about a habit's effectiveness"""
+            if not self.state.cli.agent:
+                if not await self.state.load_agent("mentalhealthai"):
+                    raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
+            
+            try:
+                # Convertendo para lista de parâmetros
+                params = [
+                    feedback_request.habit_id,
+                    feedback_request.patient_id,
+                    feedback_request.effectiveness,
+                    feedback_request.feedback,
+                    feedback_request.implementation_duration
+                ]
+                
+                result = await asyncio.to_thread(
+                    self.state.cli.agent.perform_action,
+                    connection="allora",
+                    action="submit-habit-feedback",
+                    params=params
+                )
+                
+                return {
+                    "status": "success",
+                    "message": "Feedback submitted successfully",
+                    "result": result
+                }
+            except Exception as e:
+                logger.error(f"Error submitting habit feedback: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.get("/habits/insights")
+        async def get_collective_insights():
+            """Get collective insights about habit effectiveness"""
+            if not self.state.cli.agent:
+                if not await self.state.load_agent("mentalhealthai"):
+                    raise HTTPException(status_code=400, detail="No agent loaded. Please load an agent first.")
+            
+            try:
+                insights = await asyncio.to_thread(
+                    self.state.cli.agent.perform_action,
+                    connection="allora",
+                    action="get-collective-insights",
+                    params=[]
+                )
+                
+                return {
+                    "status": "success",
+                    "insights": insights
+                }
+            except Exception as e:
+                logger.error(f"Error getting collective insights: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
 def create_app():

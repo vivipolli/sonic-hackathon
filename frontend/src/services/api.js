@@ -131,3 +131,99 @@ export async function getAnalysisByHash(userId, txHash) {
     throw error;
   }
 }
+
+// Function to submit habit feedback
+export async function submitHabitFeedback(feedbackData) {
+  try {
+    const response = await fetch("http://localhost:8000/habits/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        habit_id: feedbackData.habitId,
+        patient_id: feedbackData.patientId,
+        effectiveness: feedbackData.effectiveness,
+        feedback: feedbackData.feedback,
+        implementation_duration: feedbackData.implementationDuration || 0,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error submitting habit feedback:", error);
+    throw error;
+  }
+}
+
+// Function to get collective insights
+export async function getCollectiveInsights() {
+  try {
+    const response = await fetch("http://localhost:8000/habits/insights");
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.status === "success" && data.insights) {
+      return {
+        averageEffectiveness: data.insights.averageEffectiveness,
+        topHabits: data.insights.topHabits || [],
+        totalFeedbackCount: data.insights.totalFeedbackCount,
+        lastUpdated: data.insights.lastUpdated,
+        alloraInference: data.insights.allora_inference,
+        message: data.insights.message,
+      };
+    }
+
+    throw new Error("Failed to get insights from server");
+  } catch (error) {
+    console.error("Error fetching insights:", error);
+    throw error;
+  }
+}
+
+// Function to update habit completion status
+export async function updateHabitStatus(habitId, userId, completed) {
+  try {
+    const response = await fetch(
+      `http://localhost:8000/habits/${habitId}?user_id=${userId}&completed=${completed}`,
+      {
+        method: "PATCH",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating habit status:", error);
+    throw error;
+  }
+}
+
+// Function to get habit progress for a user
+export async function getHabitProgress(userId) {
+  try {
+    const response = await fetch(
+      `http://localhost:8000/habits/progress/${userId}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching habit progress:", error);
+    throw error;
+  }
+}

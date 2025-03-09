@@ -19,6 +19,17 @@ export function AnalysisResult() {
                 }
 
                 const parsedResults = JSON.parse(analysisResults)
+
+                // Verificar se temos pelo menos os hábitos
+                if (!parsedResults.habits) {
+                    throw new Error('No analysis data available')
+                }
+
+                // Se não tiver análise geral, criar uma mensagem padrão
+                if (!parsedResults.generalAnalysis) {
+                    parsedResults.generalAnalysis = "Based on your responses, we've developed a personalized set of habits to help you achieve your goals. These habits are designed to be practical, evidence-based, and tailored to your specific situation. Let's review the recommended habits and start implementing them in your daily routine."
+                }
+
                 setAnalysis(parsedResults)
             } catch (error) {
                 console.error('Error loading analysis:', error)
@@ -50,7 +61,7 @@ export function AnalysisResult() {
                     <p className="text-red-700">{error}</p>
                     <button
                         onClick={() => navigate('/form')}
-                        className="mt-4 px-4 py-2 bg-sky-600 text-white rounded-md"
+                        className="mt-4 px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 transition-colors"
                     >
                         Return to Form
                     </button>
@@ -68,6 +79,12 @@ export function AnalysisResult() {
                     <div className="bg-sky-50 rounded-lg p-6 mb-8">
                         <p className="text-gray-700 whitespace-pre-wrap">
                             {analysis?.generalAnalysis}
+                        </p>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-sky-50/50 rounded-lg">
+                        <p className="text-sm text-sky-800">
+                            <span className="font-medium">✨ Next Steps:</span> Review your personalized habit recommendations and start tracking your progress.
                         </p>
                     </div>
                 </div>

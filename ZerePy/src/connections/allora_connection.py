@@ -1,10 +1,13 @@
 import logging
 from typing import List, Dict, Any
-from dotenv import set_key
-from allora_sdk.v2.api_client import AlloraAPIClient, ChainSlug
+from dotenv import set_key, load_dotenv
+from allora_sdk.v2.api_client import AlloraAPIClient, ChainSlug, SignatureFormat
 from src.connections.base_connection import BaseConnection, Action, ActionParameter
 import os
 import asyncio
+import json
+import time
+import uuid
 
 logger = logging.getLogger("connections.allora_connection")
 
@@ -25,6 +28,45 @@ class AlloraConnection(BaseConnection):
         super().__init__(config)
         self._client = None
         self.chain_slug = config.get("chain_slug", ChainSlug.TESTNET)
+        # Use a fixed topic ID from an existing topic (ETH 5min Price Prediction)
+        self.topic_id = config.get("topic_id", 30)  # Default to topic 30 (ETH/USD - 5min Price Prediction)
+        
+        # Local storage for habit feedback (for hackathon demo)
+        self.feedback_store = config.get("feedback_store", {})
+        self.local_storage_path = os.path.join(os.path.dirname(__file__), "../../data/allora_feedback.json")
+        self._load_local_storage()
+
+    def _load_local_storage(self):
+        """Load feedback data from local storage"""
+        try:
+            if os.path.exists(self.local_storage_path):
+                with open(self.local_storage_path, 'r') as f:
+                    self.feedback_store = json.load(f)
+            else:
+                # Initialize with empty structure
+                self.feedback_store = {
+                    "feedbacks": [],
+                    "insights": {
+                        "averageEffectiveness": 0,
+                        "topHabits": [],
+                        "totalFeedbackCount": 0,
+                        "lastUpdated": ""
+                    }
+                }
+                # Create directory if it doesn't exist
+                os.makedirs(os.path.dirname(self.local_storage_path), exist_ok=True)
+                self._save_local_storage()
+        except Exception as e:
+            logger.error(f"Error loading local storage: {str(e)}")
+            self.feedback_store = {"feedbacks": [], "insights": {}}
+
+    def _save_local_storage(self):
+        """Save feedback data to local storage"""
+        try:
+            with open(self.local_storage_path, 'w') as f:
+                json.dump(self.feedback_store, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving to local storage: {str(e)}")
 
     @property
     def is_llm_provider(self) -> bool:
@@ -56,6 +98,22 @@ class AlloraConnection(BaseConnection):
                 name="list-topics",
                 parameters=[],
                 description="List all available Allora Network topics"
+            ),
+            Action(
+                name="submit-habit-feedback",
+                parameters=[
+                    ActionParameter("habit_id", True, str, "ID of the habit"),
+                    ActionParameter("patient_id", True, str, "ID of the patient"),
+                    ActionParameter("effectiveness", True, int, "Effectiveness rating (1-5)"),
+                    ActionParameter("feedback", False, str, "Textual feedback about the habit"),
+                    ActionParameter("implementation_duration", False, int, "Days the habit was implemented")
+                ],
+                description="Submit feedback about a habit's effectiveness"
+            ),
+            Action(
+                name="get-collective-insights",
+                parameters=[],
+                description="Get collective insights about habit effectiveness from the network"
             )
         ]
         self.actions = {action.name: action for action in actions}
@@ -96,6 +154,153 @@ class AlloraConnection(BaseConnection):
         except Exception as e:
             raise AlloraAPIError(f"Failed to list topics: {str(e)}")
 
+    async def _ensure_behavioral_topic(self) -> int:
+        """Ensure a behavioral topic exists, creating one if needed"""
+        if self.topic_id:
+            return self.topic_id
+            
+        # Get all topics and look for our behavioral topic
+        client = self._get_client()
+        topics = await client.get_all_topics()
+        
+        for topic in topics:
+            if topic.topic_name == "Behavioral Habit Effectiveness":
+                self.topic_id = topic.topic_id
+                return self.topic_id
+        
+        # If we get here, we need to create a new topic
+        # Note: SDK doesn't have create_topic method, so we'll need to create it manually
+        # through the Allora dashboard for now
+        raise AlloraConfigurationError(
+            "Behavioral topic not found. Please create a topic named 'Behavioral Habit Effectiveness' "
+            "in the Allora dashboard and configure the topic_id in the connection config."
+        )
+
+    def submit_habit_feedback(self, habit_id: str, patient_id: str, effectiveness: int, 
+                            feedback: str = "", implementation_duration: int = 0) -> Dict[str, Any]:
+        """Submit feedback about a habit's effectiveness"""
+        try:
+            logger.info(f"Submitting feedback for habit {habit_id} from patient {patient_id}")
+            
+            # Validate input
+            if effectiveness < 1 or effectiveness > 5:
+                logger.error(f"Invalid effectiveness rating: {effectiveness}. Must be between 1-5.")
+                return {"error": "Effectiveness rating must be between 1-5"}
+            
+            # Create feedback entry
+            feedback_entry = {
+                "id": str(uuid.uuid4()),
+                "habit_id": habit_id,
+                "patient_id": patient_id,
+                "effectiveness": effectiveness,
+                "feedback": feedback,
+                "implementation_duration": implementation_duration,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            }
+            
+            # Add to local storage
+            logger.info(f"Adding feedback to local storage: {feedback_entry}")
+            self.feedback_store["feedbacks"].append(feedback_entry)
+            
+            # Update insights
+            self._update_insights()
+            
+            # Save to local storage
+            self._save_local_storage()
+            
+            logger.info("Feedback submitted successfully")
+            return {
+                "status": "success",
+                "message": "Feedback submitted successfully",
+                "feedback_id": feedback_entry["id"]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error submitting habit feedback: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Failed to submit feedback: {str(e)}"
+            }
+
+    def _update_insights(self):
+        """Update insights based on feedback data"""
+        feedbacks = self.feedback_store["feedbacks"]
+        if not feedbacks:
+            return
+        
+        # Calculate average effectiveness
+        total_effectiveness = sum(f["effectiveness"] for f in feedbacks)
+        avg_effectiveness = total_effectiveness / len(feedbacks)
+        
+        # Find top habits
+        habit_effectiveness = {}
+        for f in feedbacks:
+            habit_id = f["habit_id"]
+            if habit_id not in habit_effectiveness:
+                habit_effectiveness[habit_id] = {"total": 0, "count": 0, "feedbacks": []}
+            
+            habit_effectiveness[habit_id]["total"] += f["effectiveness"]
+            habit_effectiveness[habit_id]["count"] += 1
+            habit_effectiveness[habit_id]["feedbacks"].append(f["feedback"])
+        
+        # Calculate average for each habit
+        for habit_id, data in habit_effectiveness.items():
+            data["average"] = data["total"] / data["count"]
+        
+        # Sort habits by effectiveness
+        sorted_habits = sorted(
+            [{"habit_id": k, **v} for k, v in habit_effectiveness.items()],
+            key=lambda x: x["average"],
+            reverse=True
+        )
+        
+        # Update insights
+        self.feedback_store["insights"] = {
+            "averageEffectiveness": round(avg_effectiveness, 2),
+            "topHabits": sorted_habits[:5],  # Top 5 habits
+            "totalFeedbackCount": len(feedbacks),
+            "lastUpdated": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        }
+
+    def get_collective_insights(self) -> Dict[str, Any]:
+        """Get collective insights about habit effectiveness"""
+        try:
+            # For hackathon: Return locally stored insights
+            if not self.feedback_store.get("insights"):
+                return self._get_default_insights()
+            
+            # Try to get real inference from Allora (for demo purposes)
+            try:
+                inference = self._make_request(
+                    'get_inference_by_topic_id',
+                    self.topic_id,
+                    SignatureFormat.ETHEREUM_SEPOLIA
+                )
+                allora_data = inference.inference_data.network_inference_normalized
+            except Exception as e:
+                logger.warning(f"Could not get Allora inference: {str(e)}")
+                allora_data = "Not available"
+            
+            # Return combined insights
+            return {
+                **self.feedback_store["insights"],
+                "allora_inference": allora_data
+            }
+                
+        except Exception as e:
+            logger.error(f"Failed to get collective insights: {str(e)}")
+            return self._get_default_insights()
+
+    def _get_default_insights(self) -> Dict[str, Any]:
+        """Get default insights when no data is available"""
+        return {
+            "averageEffectiveness": 0,
+            "topHabits": [],
+            "totalFeedbackCount": 0,
+            "lastUpdated": "",
+            "message": "No collective insights available yet. Be the first to contribute!"
+        }
+
     def configure(self) -> bool:
         """Sets up Allora API authentication"""
         print("\n🔮 ALLORA API SETUP")
@@ -127,24 +332,75 @@ class AlloraConnection(BaseConnection):
 
     def is_configured(self, verbose: bool = False) -> bool:
         """Check if Allora API is configured"""
+        # Tenta recarregar a API key do arquivo .env
+        load_dotenv(override=True)
+        
         api_key = os.getenv("ALLORA_API_KEY")
         if verbose:
             if not api_key:
                 logger.info("\n❌ Allora API key not found in environment")
             else:
                 logger.info("\n✅ Allora API key found")
+        
+        # Para o hackathon, podemos forçar a configuração se necessário
+        if not api_key and os.path.exists('.env'):
+            # Verifica se a chave existe no arquivo .env mesmo que não esteja no ambiente
+            try:
+                with open('.env', 'r') as f:
+                    for line in f:
+                        if line.startswith('ALLORA_API_KEY='):
+                            return True
+            except Exception as e:
+                logger.error(f"Error reading .env file: {e}")
+        
         return bool(api_key)
 
     def perform_action(self, action_name: str, kwargs) -> Any:
         """Execute an action with validation"""
-        if action_name not in self.actions:
-            raise KeyError(f"Unknown action: {action_name}")
+        try:
+            if action_name not in self.actions:
+                raise KeyError(f"Unknown action: {action_name}")
 
-        action = self.actions[action_name]
-        errors = action.validate_params(kwargs)
-        if errors:
-            raise ValueError(f"Invalid parameters: {', '.join(errors)}")
+            action = self.actions[action_name]
+            
+            # Log para depuração
+            logger.info(f"Performing action {action_name} with params: {kwargs}")
+            
+            # Verificar se kwargs é um dicionário
+            if not isinstance(kwargs, dict):
+                logger.warning(f"kwargs is not a dictionary: {type(kwargs)}")
+                # Tentar converter para dicionário se for uma lista
+                if isinstance(kwargs, list):
+                    # Converter lista para dicionário usando os nomes dos parâmetros
+                    param_names = [p.name for p in action.parameters]
+                    kwargs_dict = {}
+                    for i, value in enumerate(kwargs):
+                        if i < len(param_names):
+                            kwargs_dict[param_names[i]] = value
+                    kwargs = kwargs_dict
+                    logger.info(f"Converted kwargs to dictionary: {kwargs}")
+                else:
+                    # Se não for lista nem dicionário, criar um dicionário vazio
+                    kwargs = {}
+            
+            errors = action.validate_params(kwargs)
+            if errors:
+                error_msg = f"Invalid parameters: {', '.join(errors)}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
-        method_name = action_name.replace('-', '_')
-        method = getattr(self, method_name)
-        return method(**kwargs)
+            method_name = action_name.replace('-', '_')
+            method = getattr(self, method_name)
+            
+            # Chamar o método com os parâmetros nomeados
+            result = method(**kwargs)
+            logger.info(f"Action {action_name} completed successfully")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in perform_action: {str(e)}")
+            # Retornar um objeto de erro em vez de propagar a exceção
+            return {
+                "status": "error",
+                "message": str(e)
+            }

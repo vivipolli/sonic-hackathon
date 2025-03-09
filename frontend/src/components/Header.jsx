@@ -26,22 +26,33 @@ export function Header() {
             <nav className="container mx-auto px-4 py-4">
                 <div className="flex items-center justify-between">
                     <Link to="/" className="flex items-center space-x-2">
-                        {/* <img src={logo} alt="HabiChain Logo" className="w-8 h-8" /> */}
-                        <span className="text-xl font-semibold text-sky-800">HabiChain</span>
+                        <span className="text-xl font-semibold text-[#f06315]">BehavAI</span>
                     </Link>
 
-                    <div className="hidden md:flex items-center space-x-8">
+                    <div className="hidden md:flex items-center space-x-6">
                         <Link
                             to="/form"
-                            className={`transition-colors ${isActive('/form') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
+                            className={`transition-colors ${isActive('/form') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
                         >
                             Form
                         </Link>
                         <Link
                             to="/habits"
-                            className={`transition-colors ${isActive('/habits') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
+                            className={`transition-colors ${isActive('/habits') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
                         >
                             Habits Tracker
+                        </Link>
+                        <Link
+                            to="/habits/feedback"
+                            className={`transition-colors ${isActive('/habits/feedback') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
+                        >
+                            Habit Feedback
+                        </Link>
+                        <Link
+                            to="/insights"
+                            className={`transition-colors ${isActive('/insights') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
+                        >
+                            Insights
                         </Link>
 
                         <button
@@ -50,7 +61,6 @@ export function Header() {
                         >
                             Logout
                         </button>
-
                     </div>
 
                     <button
@@ -67,19 +77,32 @@ export function Header() {
                     <div className="flex flex-col space-y-4 p-4 bg-white rounded-lg shadow-lg">
                         <Link
                             to="/form"
-                            className={`transition-colors ${isActive('/') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
+                            className={`transition-colors ${isActive('/form') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
                             Form
                         </Link>
                         <Link
                             to="/habits"
-                            className={`transition-colors ${isActive('/habits') ? 'text-sky-600' : 'text-sky-800 hover:text-sky-600'}`}
+                            className={`transition-colors ${isActive('/habits') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
                             Habits Tracker
                         </Link>
-
+                        <Link
+                            to="/habits/feedback"
+                            className={`transition-colors ${isActive('/habits/feedback') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            Habit Feedback
+                        </Link>
+                        <Link
+                            to="/insights"
+                            className={`transition-colors ${isActive('/insights') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            Insights
+                        </Link>
 
                         <button
                             onClick={handleLogout}
@@ -87,7 +110,6 @@ export function Header() {
                         >
                             Logout
                         </button>
-
                     </div>
                 </div>
             </nav>

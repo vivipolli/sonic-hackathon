@@ -1,7 +1,7 @@
 import { useWeb3Auth } from "@web3auth/modal-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-// import logo from '../assets/logo.png';
+import logo from '../assets/logoIcon.png';
 
 function Login() {
     const { connect, isConnected } = useWeb3Auth();
@@ -23,7 +23,7 @@ function Login() {
             <div
                 className="absolute inset-0 z-0"
                 style={{
-                    backgroundImage: "url('/bg-login1.png')",
+                    backgroundImage: "url('/bg-login.png')",
                     backgroundPosition: "center",
                     backgroundRepeat: "no-repeat",
                     filter: "brightness(0.7)",
@@ -35,11 +35,8 @@ function Login() {
             <div className="w-full max-w-md px-4 sm:px-0">
                 <div className="bg-white/10 p-8 rounded-xl shadow-lg backdrop-blur-md border border-white/30">
                     <div>
-                        <div className="flex justify-center mb-4">
-                            {/* <img src={logo} alt="HabiChain Logo" className="w-16 h-16" /> */}
-                        </div>
                         <h2 className="mt-2 text-center text-3xl text-sky-800">
-                            Welcome to HabiChain
+                            Welcome to BehavAI
                         </h2>
                         <p className="mt-2 text-center text-md text-black text-italic">
                             Analyze your behavior and build habits with blockchain security.
