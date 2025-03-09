@@ -1,12 +1,11 @@
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 // Function to load the agent
 export async function loadAgent(agentName) {
   try {
-    const response = await fetch(
-      `http://localhost:8000/agents/${agentName}/load`,
-      {
-        method: "POST",
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/agents/${agentName}/load`, {
+      method: "POST",
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -51,7 +50,7 @@ export async function analyzeBehavior(behaviorData) {
     await loadAgent("mentalhealthai");
 
     const makeRequest = async () => {
-      const response = await fetch("http://localhost:8000/analyze", {
+      const response = await fetch(`${API_BASE_URL}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +101,7 @@ export async function analyzeBehavior(behaviorData) {
 export async function getAnalysisByHash(userId, txHash) {
   try {
     const response = await fetch(
-      `http://localhost:8000/user/responses/${userId}?tx_hash=${txHash}`
+      `${API_BASE_URL}/user/responses/${userId}?tx_hash=${txHash}`
     );
 
     if (!response.ok) {
@@ -135,7 +134,7 @@ export async function getAnalysisByHash(userId, txHash) {
 // Function to submit habit feedback
 export async function submitHabitFeedback(feedbackData) {
   try {
-    const response = await fetch("http://localhost:8000/habits/feedback", {
+    const response = await fetch(`${API_BASE_URL}/habits/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -163,7 +162,7 @@ export async function submitHabitFeedback(feedbackData) {
 // Function to get collective insights
 export async function getCollectiveInsights() {
   try {
-    const response = await fetch("http://localhost:8000/habits/insights");
+    const response = await fetch(`${API_BASE_URL}/habits/insights`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -193,7 +192,7 @@ export async function getCollectiveInsights() {
 export async function updateHabitStatus(habitId, userId, completed) {
   try {
     const response = await fetch(
-      `http://localhost:8000/habits/${habitId}?user_id=${userId}&completed=${completed}`,
+      `${API_BASE_URL}/habits/${habitId}?user_id=${userId}&completed=${completed}`,
       {
         method: "PATCH",
       }
@@ -213,9 +212,7 @@ export async function updateHabitStatus(habitId, userId, completed) {
 // Function to get habit progress for a user
 export async function getHabitProgress(userId) {
   try {
-    const response = await fetch(
-      `http://localhost:8000/habits/progress/${userId}`
-    );
+    const response = await fetch(`${API_BASE_URL}/habits/progress/${userId}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
