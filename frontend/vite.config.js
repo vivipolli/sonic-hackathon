@@ -29,4 +29,16 @@ export default defineConfig({
       util: "util",
     },
   },
+  // Add server configuration for SPA routing
+  server: {
+    historyApiFallback: true,
+  },
+  // Add build configuration for SPA routing in production
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 });

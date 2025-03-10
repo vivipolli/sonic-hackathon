@@ -21,8 +21,16 @@ export function AnalysisResult() {
                 const parsedResults = JSON.parse(analysisResults)
 
                 // Verificar se temos pelo menos os hábitos
-                if (!parsedResults.habits) {
+                if (!parsedResults.habits && !parsedResults.analysis) {
                     throw new Error('No analysis data available')
+                }
+
+                // Se temos analysis mas não habits, extrair habits do analysis
+                if (parsedResults.analysis && !parsedResults.habits) {
+                    const [generalAnalysis, habitsSection] = parsedResults.analysis.split("Habits:");
+
+                    parsedResults.generalAnalysis = generalAnalysis.replace("GENERAL:", "").trim();
+                    parsedResults.habits = habitsSection ? habitsSection.trim() : "";
                 }
 
                 // Se não tiver análise geral, criar uma mensagem padrão
