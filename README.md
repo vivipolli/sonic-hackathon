@@ -4,7 +4,6 @@ A privacy-first mental health application that helps users track and analyze beh
 
 - **Sonic Network**: Ensures complete data confidentiality through encrypted storage of user behavioral data and analysis results
 - **EternalAI**: Provides secure and private AI analysis through blockchain-protected LLM interactions
-- **Allora**: Generates decentralized collective insights while maintaining individual privacy
 
 This architecture ensures that sensitive mental health data remains confidential and secure, while still enabling powerful AI-driven analysis and evidence-based habit recommendations.
 
@@ -13,7 +12,6 @@ This architecture ensures that sensitive mental health data remains confidential
 - 🧠 **Private Behavioral Analysis:** AI-powered analysis with encrypted data through EternalAI
 - 📊 **Smart Recommendations:** Personalized habit suggestions based on your behavioral patterns
 - 📝 **Secure Habit Tracking:** Daily progress monitoring on Sonic Network with verifiable transactions
-- 🔗 **Community Insights:** Anonymous pattern analysis and effectiveness metrics via Allora
 - 🔑 **Web3 Made Easy:** Secure access through familiar social logins (Google, Facebook, Twitter)
 - 🛡️ **Privacy-First Design:** End-to-end encryption with blockchain-level security
 
@@ -29,11 +27,10 @@ Our platform addresses these issues that integrates AI-driven analysis with prof
 
 ## 💡 Solution
 
-We leverage **Sonic Network**, **EternalAI**, and **Allora** to create a secure platform where:
+We leverage **Sonic Network** and **EternalAI** to create a secure platform where:
 
 - 🔒 **Users maintain complete control** over their mental health data through Sonic Network's encrypted storage
 - 🤖 **AI analysis is performed privately** through EternalAI's blockchain-protected LLM interactions
-- 📊 **Community insights are generated** via Allora's decentralized analytics while preserving individual privacy
 - 🔐 **All transactions are verifiable** while maintaining data confidentiality
 
 ---
@@ -52,7 +49,6 @@ We leverage **Sonic Network**, **EternalAI**, and **Allora** to create a secure 
 
 - 🤖 EternalAI: Behavioral analysis
 - 💾 Sonic: Encrypted data storage
-- 📊 Allora: Community insights
 
 ---
 
@@ -86,7 +82,6 @@ poetry shell
 # Configure ZerePy connections
 poetry run zerepy configure-connection eternalai  # For behavioral analysis
 poetry run zerepy configure-connection sonic      # For encrypted storage
-poetry run zerepy configure-connection allora     # For collective insights
 ```
 
 ### 2. Frontend Setup
@@ -142,7 +137,6 @@ The application will be available at:
 - 📜 **Analysis History System**: Implementation of a secure retrieval system where transaction hashes are stored in centralized databases, with analysis recovery linked to both the hash and the encrypted user ID associated with the authentication token ID, ensuring privacy and data integrity.
 - 📊 **Comprehensive Habit Tracking**: Recording of completed habits, habit history, and daily notes for AI-powered progress analysis
 - 🤖 **AI Prompt Optimization**: Refinement of prompt engineering for more accurate and personalized behavioral analysis
-- 🧠 **Insight Optimization with Allora**: Optimization of existing Allora AI integration to enhance behavioral pattern recognition and deliver more personalized intervention recommendations
 
 ## Medium Term (6-12 months)
 
@@ -162,6 +156,5 @@ The application will be available at:
 - 🔗 [ZerePy Documentation](https://www.zerepy.org/docs/intro)
 - 🌊 [Sonic Network Documentation](https://docs.soniclabs.com/)
 - 🤖 [EternalAI Documentation](https://docs.eternalai.org/eternal-ai)
-- 📊 [Allora Documentation](https://docs.allora.network/home/explore)
 - 🔑 [Web3Auth Documentation](https://web3auth.io/docs/)
 - 📦 [Poetry Documentation](https://python-poetry.org/docs/)

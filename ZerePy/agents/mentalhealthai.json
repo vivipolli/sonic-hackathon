@@ -14,10 +14,6 @@
   "loop_delay": 900,
   "config": [
     {
-      "name": "allora",
-      "chain_slug": "testnet"
-    },
-    {
       "name": "eternalai",
       "model": "NousResearch/DeepHermes-3-Llama-3-8B-Preview",
       "chain_id": "8453",

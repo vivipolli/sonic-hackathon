@@ -9,8 +9,6 @@ import { HabitsPage } from './pages/HabitsPage'
 import Login from './pages/Login'
 import web3AuthContextConfig from "./web3authContext";
 import { AnalysisResult } from './components/AnalysisResult'
-import InsightsPage from './pages/InsightsPage';
-import HabitFeedbackPage from './pages/HabitFeedbackPage';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -66,8 +64,6 @@ function AppContent() {
             <AnalysisResult />
           </ProtectedRoute>
         } />
-        <Route path="/habits/feedback" element={<HabitFeedbackPage />} />
-        <Route path="/insights" element={<InsightsPage />} />
         <Route path="/" element={<Navigate to="/form" />} />
       </Routes>
     </Router>

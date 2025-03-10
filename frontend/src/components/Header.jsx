@@ -43,19 +43,6 @@ export function Header() {
                         >
                             Interventions
                         </Link>
-                        <Link
-                            to="/habits/feedback"
-                            className={`transition-colors ${isActive('/habits/feedback') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
-                        >
-                            Habit Feedback
-                        </Link>
-                        <Link
-                            to="/insights"
-                            className={`transition-colors ${isActive('/insights') ? 'text-[#f06315] font-bold' : 'text-sky-600 hover:text-[#f06315]'}`}
-                        >
-                            Insights
-                        </Link>
-
                         <button
                             onClick={handleLogout}
                             className="px-4 py-2 text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-lg"
@@ -88,23 +75,8 @@ export function Header() {
                             className={`transition-colors ${isActive('/habits') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Habits Tracker
+                            Interventions
                         </Link>
-                        <Link
-                            to="/habits/feedback"
-                            className={`transition-colors ${isActive('/habits/feedback') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                            Habit Feedback
-                        </Link>
-                        <Link
-                            to="/insights"
-                            className={`transition-colors ${isActive('/insights') ? 'text-[#f06315] font-bold' : 'text-sky-800 hover:text-[#f06315]'}`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                            Insights
-                        </Link>
-
                         <button
                             onClick={handleLogout}
                             className="w-full px-4 py-2 text-white bg-sky-600 hover:bg-sky-700 transition-colors rounded-lg"

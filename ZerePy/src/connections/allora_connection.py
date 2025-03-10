@@ -28,10 +28,8 @@ class AlloraConnection(BaseConnection):
         super().__init__(config)
         self._client = None
         self.chain_slug = config.get("chain_slug", ChainSlug.TESTNET)
-        # Use a fixed topic ID from an existing topic (ETH 5min Price Prediction)
         self.topic_id = config.get("topic_id", 30)  # Default to topic 30 (ETH/USD - 5min Price Prediction)
         
-        # Local storage for habit feedback (for hackathon demo)
         self.feedback_store = config.get("feedback_store", {})
         self.local_storage_path = os.path.join(os.path.dirname(__file__), "../../data/allora_feedback.json")
         self._load_local_storage()
@@ -43,7 +41,6 @@ class AlloraConnection(BaseConnection):
                 with open(self.local_storage_path, 'r') as f:
                     self.feedback_store = json.load(f)
             else:
-                # Initialize with empty structure
                 self.feedback_store = {
                     "feedbacks": [],
                     "insights": {
@@ -53,7 +50,6 @@ class AlloraConnection(BaseConnection):
                         "lastUpdated": ""
                     }
                 }
-                # Create directory if it doesn't exist
                 os.makedirs(os.path.dirname(self.local_storage_path), exist_ok=True)
                 self._save_local_storage()
         except Exception as e:
@@ -124,7 +120,6 @@ class AlloraConnection(BaseConnection):
             client = self._get_client()
             method = getattr(client, method_name)
             
-            # Create event loop for async calls
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -154,40 +149,16 @@ class AlloraConnection(BaseConnection):
         except Exception as e:
             raise AlloraAPIError(f"Failed to list topics: {str(e)}")
 
-    async def _ensure_behavioral_topic(self) -> int:
-        """Ensure a behavioral topic exists, creating one if needed"""
-        if self.topic_id:
-            return self.topic_id
-            
-        # Get all topics and look for our behavioral topic
-        client = self._get_client()
-        topics = await client.get_all_topics()
-        
-        for topic in topics:
-            if topic.topic_name == "Behavioral Habit Effectiveness":
-                self.topic_id = topic.topic_id
-                return self.topic_id
-        
-        # If we get here, we need to create a new topic
-        # Note: SDK doesn't have create_topic method, so we'll need to create it manually
-        # through the Allora dashboard for now
-        raise AlloraConfigurationError(
-            "Behavioral topic not found. Please create a topic named 'Behavioral Habit Effectiveness' "
-            "in the Allora dashboard and configure the topic_id in the connection config."
-        )
-
     def submit_habit_feedback(self, habit_id: str, patient_id: str, effectiveness: int, 
                             feedback: str = "", implementation_duration: int = 0) -> Dict[str, Any]:
         """Submit feedback about a habit's effectiveness"""
         try:
             logger.info(f"Submitting feedback for habit {habit_id} from patient {patient_id}")
             
-            # Validate input
             if effectiveness < 1 or effectiveness > 5:
                 logger.error(f"Invalid effectiveness rating: {effectiveness}. Must be between 1-5.")
                 return {"error": "Effectiveness rating must be between 1-5"}
             
-            # Create feedback entry
             feedback_entry = {
                 "id": str(uuid.uuid4()),
                 "habit_id": habit_id,
@@ -198,14 +169,10 @@ class AlloraConnection(BaseConnection):
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             }
             
-            # Add to local storage
             logger.info(f"Adding feedback to local storage: {feedback_entry}")
             self.feedback_store["feedbacks"].append(feedback_entry)
             
-            # Update insights
             self._update_insights()
-            
-            # Save to local storage
             self._save_local_storage()
             
             logger.info("Feedback submitted successfully")
@@ -228,11 +195,9 @@ class AlloraConnection(BaseConnection):
         if not feedbacks:
             return
         
-        # Calculate average effectiveness
         total_effectiveness = sum(f["effectiveness"] for f in feedbacks)
         avg_effectiveness = total_effectiveness / len(feedbacks)
         
-        # Find top habits
         habit_effectiveness = {}
         for f in feedbacks:
             habit_id = f["habit_id"]
@@ -243,18 +208,15 @@ class AlloraConnection(BaseConnection):
             habit_effectiveness[habit_id]["count"] += 1
             habit_effectiveness[habit_id]["feedbacks"].append(f["feedback"])
         
-        # Calculate average for each habit
         for habit_id, data in habit_effectiveness.items():
             data["average"] = data["total"] / data["count"]
         
-        # Sort habits by effectiveness
         sorted_habits = sorted(
             [{"habit_id": k, **v} for k, v in habit_effectiveness.items()],
             key=lambda x: x["average"],
             reverse=True
         )
         
-        # Update insights
         self.feedback_store["insights"] = {
             "averageEffectiveness": round(avg_effectiveness, 2),
             "topHabits": sorted_habits[:5],  # Top 5 habits
@@ -281,7 +243,6 @@ class AlloraConnection(BaseConnection):
                 logger.warning(f"Could not get Allora inference: {str(e)}")
                 allora_data = "Not available"
             
-            # Return combined insights
             return {
                 **self.feedback_store["insights"],
                 "allora_inference": allora_data
@@ -316,7 +277,6 @@ class AlloraConnection(BaseConnection):
             if not api_key:
                 raise AlloraConfigurationError("API key cannot be empty")
 
-            # Save to .env file
             set_key('.env', 'ALLORA_API_KEY', api_key)
             print("\n✅ Allora API key saved successfully!")
             return True
@@ -327,12 +287,10 @@ class AlloraConnection(BaseConnection):
 
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Validate Allora configuration from JSON"""
-        # No required fields for Allora connection
         return config
 
     def is_configured(self, verbose: bool = False) -> bool:
         """Check if Allora API is configured"""
-        # Tenta recarregar a API key do arquivo .env
         load_dotenv(override=True)
         
         api_key = os.getenv("ALLORA_API_KEY")
@@ -342,9 +300,7 @@ class AlloraConnection(BaseConnection):
             else:
                 logger.info("\n✅ Allora API key found")
         
-        # Para o hackathon, podemos forçar a configuração se necessário
         if not api_key and os.path.exists('.env'):
-            # Verifica se a chave existe no arquivo .env mesmo que não esteja no ambiente
             try:
                 with open('.env', 'r') as f:
                     for line in f:
@@ -363,15 +319,11 @@ class AlloraConnection(BaseConnection):
 
             action = self.actions[action_name]
             
-            # Log para depuração
             logger.info(f"Performing action {action_name} with params: {kwargs}")
             
-            # Verificar se kwargs é um dicionário
             if not isinstance(kwargs, dict):
                 logger.warning(f"kwargs is not a dictionary: {type(kwargs)}")
-                # Tentar converter para dicionário se for uma lista
                 if isinstance(kwargs, list):
-                    # Converter lista para dicionário usando os nomes dos parâmetros
                     param_names = [p.name for p in action.parameters]
                     kwargs_dict = {}
                     for i, value in enumerate(kwargs):
@@ -380,7 +332,6 @@ class AlloraConnection(BaseConnection):
                     kwargs = kwargs_dict
                     logger.info(f"Converted kwargs to dictionary: {kwargs}")
                 else:
-                    # Se não for lista nem dicionário, criar um dicionário vazio
                     kwargs = {}
             
             errors = action.validate_params(kwargs)
@@ -392,14 +343,12 @@ class AlloraConnection(BaseConnection):
             method_name = action_name.replace('-', '_')
             method = getattr(self, method_name)
             
-            # Chamar o método com os parâmetros nomeados
             result = method(**kwargs)
             logger.info(f"Action {action_name} completed successfully")
             return result
             
         except Exception as e:
             logger.error(f"Error in perform_action: {str(e)}")
-            # Retornar um objeto de erro em vez de propagar a exceção
             return {
                 "status": "error",
                 "message": str(e)
